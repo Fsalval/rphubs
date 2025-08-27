@@ -25,7 +25,7 @@ export default function CharacterFichaPage() {
     const [tags, setTags] = useState<string[]>(character.tags || []);
     const [socialLinks, setSocialLinks] = useState<any[]>(character.socialLinks || []);
     const [avatarUrl, setAvatarUrl] = useState(character.avatarUrl || '');
-    const [bannerUrl, setBannerUrl] = useState(character.bannerUrl || '');
+
 
     const [editingBio, setEditingBio] = useState(false);
     const [editingTrama, setEditingTrama] = useState(false);
@@ -34,7 +34,6 @@ export default function CharacterFichaPage() {
     const [editingTags, setEditingTags] = useState(false);
     const [editingLinks, setEditingLinks] = useState(false);
     const [editingAvatar, setEditingAvatar] = useState(false);
-    const [editingBanner, setEditingBanner] = useState(false);
     const [saving, setSaving] = useState(false);
 
     // Estados para nuevos items
@@ -52,7 +51,6 @@ export default function CharacterFichaPage() {
             let updateField = field;
             if (field === 'bio') updateField = 'biography';
             if (field === 'avatar') updateField = 'avatarUrl';
-            if (field === 'banner') updateField = 'bannerUrl';
             
             await update(characterRef, { [updateField]: value });
             
@@ -64,7 +62,6 @@ export default function CharacterFichaPage() {
             if (field === 'tags') setTags(value);
             if (field === 'socialLinks') setSocialLinks(value);
             if (field === 'avatar') setAvatarUrl(value);
-            if (field === 'banner') setBannerUrl(value);
             
             // Cerrar modo edición
             setEditingBio(false);
@@ -123,28 +120,18 @@ export default function CharacterFichaPage() {
         setSocialLinks(updatedLinks);
     };
 
-    // Datos simulados de conexiones
-    const familiares = [
-        { id: '1', name: 'Eleanor Finch', username: 'efinch', relation: 'Madre', age: 68, status: 'Viva' },
-        { id: '2', name: 'Julian Finch', username: 'jfinch', relation: 'Hermano', age: 38, status: 'Desaparecido' },
-    ];
-
-    const amigos = [
-        { id: '3', name: 'Clara Voss', username: 'cvoss', relation: 'Mejor amiga', lastSeen: 'hace 2 días' },
-        { id: '4', name: 'Marcus Reed', username: 'mreed', relation: 'Compañero de trabajo', lastSeen: 'ayer' },
-    ];
-
-    const socios = [
-        { id: '5', name: 'Lila Chen', username: 'lchen', relation: 'Investigadora asociada', project: 'Caso del río negro' },
-    ];
 
     return (
         <div className="space-y-8">
-        <Tabs defaultValue="ficha">
-            <TabsList className="flex justify-center gap-8 border-b border-border pb-2 w-full">
+            <div className="flex justify-center gap-8 border-b border-border pb-2 w-full">
             <TabsTrigger value="ficha">Ficha del Personaje</TabsTrigger>
-            <TabsTrigger value="conexiones">Conexiones</TabsTrigger>
-            </TabsList>
+            <a 
+                href={`/dashboard/characters/${character.id}/ficha/conexiones`}
+                className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground rounded-sm transition-colors"
+            >
+                Conexiones
+            </a>
+            </div>
 
             <TabsContent value="ficha">
             <div className="space-y-8">
@@ -477,135 +464,6 @@ export default function CharacterFichaPage() {
                     </CardContent>
                 </Card>
 
-                {/* Imagen de perfil */}
-                {isOwner && (
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle>Foto de perfil</CardTitle>
-                            <Button variant="ghost" size="sm" onClick={() => setEditingAvatar(!editingAvatar)}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                        </CardHeader>
-                        <CardContent>
-                            {editingAvatar ? (
-                                <div className="space-y-4">
-                                    <ImageUpload
-                                        value={avatarUrl}
-                                        onChange={(url) => setAvatarUrl(url)}
-                                        variant="avatar"
-                                        folder="characters/avatars"
-                                        placeholder="Subir foto de perfil"
-                                    />
-                                    <div className="flex gap-2">
-                                        <Button 
-                                            size="sm" 
-                                            onClick={() => handleSave('avatar', avatarUrl)}
-                                            disabled={saving}
-                                        >
-                                            {saving ? (
-                                                <>
-                                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                                                    Guardando...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Save className="h-3 w-3 mr-2" />
-                                                    Guardar
-                                                </>
-                                            )}
-                                        </Button>
-                                        <Button 
-                                            size="sm" 
-                                            variant="outline" 
-                                            onClick={() => setEditingAvatar(false)}
-                                            disabled={saving}
-                                        >
-                                            <X className="h-3 w-3 mr-2" />
-                                            Cancelar
-                                        </Button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-4">
-                                    <Avatar className="w-16 h-16">
-                                        <AvatarImage src={avatarUrl} />
-                                        <AvatarFallback>{character.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <p className="text-sm text-muted-foreground">Haz clic en el botón de editar para cambiar tu foto de perfil.</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Banner del perfil */}
-                {isOwner && (
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle>Banner del perfil</CardTitle>
-                            <Button variant="ghost" size="sm" onClick={() => setEditingBanner(!editingBanner)}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                        </CardHeader>
-                        <CardContent>
-                            {editingBanner ? (
-                                <div className="space-y-4">
-                                    <ImageUpload
-                                        value={bannerUrl}
-                                        onChange={(url) => setBannerUrl(url)}
-                                        variant="banner"
-                                        folder="characters/banners"
-                                        placeholder="Subir banner del perfil"
-                                        maxWidth={1200}
-                                        maxHeight={400}
-                                    />
-                                    <div className="flex gap-2">
-                                        <Button 
-                                            size="sm" 
-                                            onClick={() => handleSave('banner', bannerUrl)}
-                                            disabled={saving}
-                                        >
-                                            {saving ? (
-                                                <>
-                                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                                                    Guardando...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Save className="h-3 w-3 mr-2" />
-                                                    Guardar
-                                                </>
-                                            )}
-                                        </Button>
-                                        <Button 
-                                            size="sm" 
-                                            variant="outline" 
-                                            onClick={() => setEditingBanner(false)}
-                                            disabled={saving}
-                                        >
-                                            <X className="h-3 w-3 mr-2" />
-                                            Cancelar
-                                        </Button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {bannerUrl ? (
-                                        <div 
-                                            className="h-24 w-full rounded-lg bg-cover bg-center border"
-                                            style={{ backgroundImage: `url(${bannerUrl})` }}
-                                        />
-                                    ) : (
-                                        <div className="h-24 w-full rounded-lg border-2 border-dashed border-muted-foreground flex items-center justify-center">
-                                            <p className="text-sm text-muted-foreground">Sin banner</p>
-                                        </div>
-                                    )}
-                                    <p className="text-sm text-muted-foreground">Haz clic en el botón de editar para cambiar tu banner.</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
 
                 {/* Trama */}
                 <Card>
@@ -982,279 +840,8 @@ export default function CharacterFichaPage() {
                     </CardContent>
                 </Card>
                 </div>
-
-                {/* Lista de conexiones */}
-                <div className="md:col-span-8 lg:col-span-9 space-y-6">
-                {/* Familia */}
-                <Card>
-                    <CardHeader>
-                    <CardTitle>Familia</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                    {familiares.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No hay familiares definidos.</p>
-                    ) : (
-                        familiares.map((fam) => (
-                        <div key={fam.id} className="flex items-center gap-3 p-2 hover:bg-muted rounded">
-                            <Avatar className="h-10 w-10">
-                            <AvatarImage src="/placeholder.svg" />
-                            <AvatarFallback>{fam.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                            <p className="font-medium">{fam.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                                {fam.relation} • {fam.age} años • {fam.status}
-                            </p>
-                            </div>
-                            {isOwner && (
-                            <Button variant="ghost" size="sm" className="ml-auto">
-                                Editar
-                            </Button>
-                            )}
-                        </div>
-                        ))
-                    )}
-                    {isOwner && (
-                        <Button variant="outline" size="sm" className="mt-2">
-                        + Añadir familiar
-                        </Button>
-                    )}
-                    </CardContent>
-                </Card>
-
-                {/* Amigos */}
-                <Card>
-                    <CardHeader>
-                    <CardTitle>Amigos</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                    {amigos.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No hay amigos definidos.</p>
-                    ) : (
-                        amigos.map((amigo) => (
-                        <div key={amigo.id} className="flex items-center gap-3 p-2 hover:bg-muted rounded">
-                            <Avatar className="h-10 w-10">
-                            <AvatarImage src="/placeholder.svg" />
-                            <AvatarFallback>{amigo.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                            <p className="font-medium">{amigo.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                                {amigo.relation} • Última vez: {amigo.lastSeen}
-                            </p>
-                            </div>
-                            {isOwner && (
-                            <Button variant="ghost" size="sm" className="ml-auto">
-                                Editar
-                            </Button>
-                            )}
-                        </div>
-                        ))
-                    )}
-                    {isOwner && (
-                        <Button variant="outline" size="sm" className="mt-2">
-                        + Añadir amigo
-                        </Button>
-                    )}
-                    </CardContent>
-                </Card>
-
-                {/* Socios */}
-                <Card>
-                    <CardHeader>
-                    <CardTitle>Socios</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                    {socios.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No hay socios definidos.</p>
-                    ) : (
-                        socios.map((socio) => (
-                        <div key={socio.id} className="flex items-center gap-3 p-2 hover:bg-muted rounded">
-                            <Avatar className="h-10 w-10">
-                            <AvatarImage src="/placeholder.svg" />
-                            <AvatarFallback>{socio.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                            <p className="font-medium">{socio.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                                {socio.relation} • Proyecto: {socio.project}
-                            </p>
-                            </div>
-                            {isOwner && (
-                            <Button variant="ghost" size="sm" className="ml-auto">
-                                Editar
-                            </Button>
-                            )}
-                        </div>
-                        ))
-                    )}
-                    {isOwner && (
-                        <Button variant="outline" size="sm" className="mt-2">
-                        + Añadir socio
-                        </Button>
-                    )}
-                    </CardContent>
-                </Card>
-                </div>
             </div>
             </div>
-            </TabsContent>
-            
-            {/* Pestaña de Conexiones */}
-            <TabsContent value="conexiones">
-                <div className="space-y-6">
-                    <div className="text-center">
-                        <h2 className="text-2xl font-bold">Gestión de Conexiones</h2>
-                        <p className="text-muted-foreground">Administra los vínculos de tu personaje</p>
-                    </div>
-                    
-                    {/* Pestañas internas para tipos de conexión */}
-                    <Tabs defaultValue="familia" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="familia">Familia</TabsTrigger>
-                            <TabsTrigger value="amigos">Amigos</TabsTrigger>
-                            <TabsTrigger value="socios">Socios</TabsTrigger>
-                        </TabsList>
-                        
-                        {/* Familia */}
-                        <TabsContent value="familia" className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-lg font-semibold">Familia</h3>
-                                {isOwner && (
-                                    <Button size="sm">
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        Agregar familiar
-                                    </Button>
-                                )}
-                            </div>
-                            <div className="grid gap-4">
-                                {familiares.length === 0 ? (
-                                    <p className="text-muted-foreground text-center py-8">No hay familiares definidos</p>
-                                ) : (
-                                    familiares.map((familiar) => (
-                                        <Card key={familiar.id}>
-                                            <CardContent className="p-4">
-                                                <div className="flex items-center gap-4">
-                                                    <Avatar className="h-12 w-12">
-                                                        <AvatarImage src="/placeholder.svg" />
-                                                        <AvatarFallback>{familiar.name.charAt(0)}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="flex-1">
-                                                        <h4 className="font-semibold">{familiar.name}</h4>
-                                                        <p className="text-sm text-muted-foreground">{familiar.relation}</p>
-                                                        <p className="text-sm text-muted-foreground">{familiar.age} años • {familiar.status}</p>
-                                                    </div>
-                                                    {isOwner && (
-                                                        <div className="flex gap-2">
-                                                            <Button variant="outline" size="sm">
-                                                                <Edit className="w-4 h-4" />
-                                                            </Button>
-                                                            <Button variant="outline" size="sm">
-                                                                <X className="w-4 h-4" />
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))
-                                )}
-                            </div>
-                        </TabsContent>
-                        
-                        {/* Amigos */}
-                        <TabsContent value="amigos" className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-lg font-semibold">Amigos</h3>
-                                {isOwner && (
-                                    <Button size="sm">
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        Agregar amigo
-                                    </Button>
-                                )}
-                            </div>
-                            <div className="grid gap-4">
-                                {amigos.length === 0 ? (
-                                    <p className="text-muted-foreground text-center py-8">No hay amigos definidos</p>
-                                ) : (
-                                    amigos.map((amigo) => (
-                                        <Card key={amigo.id}>
-                                            <CardContent className="p-4">
-                                                <div className="flex items-center gap-4">
-                                                    <Avatar className="h-12 w-12">
-                                                        <AvatarImage src="/placeholder.svg" />
-                                                        <AvatarFallback>{amigo.name.charAt(0)}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="flex-1">
-                                                        <h4 className="font-semibold">{amigo.name}</h4>
-                                                        <p className="text-sm text-muted-foreground">{amigo.relation}</p>
-                                                        <p className="text-sm text-muted-foreground">Última vez: {amigo.lastSeen}</p>
-                                                    </div>
-                                                    {isOwner && (
-                                                        <div className="flex gap-2">
-                                                            <Button variant="outline" size="sm">
-                                                                <Edit className="w-4 h-4" />
-                                                            </Button>
-                                                            <Button variant="outline" size="sm">
-                                                                <X className="w-4 h-4" />
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))
-                                )}
-                            </div>
-                        </TabsContent>
-                        
-                        {/* Socios */}
-                        <TabsContent value="socios" className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-lg font-semibold">Socios</h3>
-                                {isOwner && (
-                                    <Button size="sm">
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        Agregar socio
-                                    </Button>
-                                )}
-                            </div>
-                            <div className="grid gap-4">
-                                {socios.length === 0 ? (
-                                    <p className="text-muted-foreground text-center py-8">No hay socios definidos</p>
-                                ) : (
-                                    socios.map((socio) => (
-                                        <Card key={socio.id}>
-                                            <CardContent className="p-4">
-                                                <div className="flex items-center gap-4">
-                                                    <Avatar className="h-12 w-12">
-                                                        <AvatarImage src="/placeholder.svg" />
-                                                        <AvatarFallback>{socio.name.charAt(0)}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="flex-1">
-                                                        <h4 className="font-semibold">{socio.name}</h4>
-                                                        <p className="text-sm text-muted-foreground">{socio.relation}</p>
-                                                        <p className="text-sm text-muted-foreground">Proyecto: {socio.project}</p>
-                                                    </div>
-                                                    {isOwner && (
-                                                        <div className="flex gap-2">
-                                                            <Button variant="outline" size="sm">
-                                                                <Edit className="w-4 h-4" />
-                                                            </Button>
-                                                            <Button variant="outline" size="sm">
-                                                                <X className="w-4 h-4" />
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))
-                                )}
-                            </div>
-                        </TabsContent>
-                    </Tabs>
-                </div>
             </TabsContent>
         </Tabs>
         </div>

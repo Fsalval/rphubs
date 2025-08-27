@@ -1,7 +1,7 @@
 // src/app/dashboard/characters/[id]/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuConten
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCharacter } from './layout';
 import { sanitize } from '@/lib/sanitize';
-import { ref, push, set } from 'firebase/database';
+import { ref, push, set , onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
 export default function CharacterProfilePage() {
@@ -21,6 +21,33 @@ export default function CharacterProfilePage() {
   const [content, setContent] = useState('');
   const [editingPost, setEditingPost] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+
+  useEffect(() => {
+    if (!character?.id) return;
+
+    const postsRef = ref(db, `characters/${character.id}/posts`);
+    
+    const unsubscribe = onValue(postsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        // Convertir objeto en array y agregar el ID
+        const postsArray = Object.entries(data)
+          .map(([key, value]: [string, any]) => ({
+            ...value,
+            id: key // asegura que el ID esté presente
+          }))
+          .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()); // nuevos primero
+        
+        setPosts(postsArray);
+      } else {
+        setPosts([]); // si no hay posts
+      }
+    }, (error) => {
+      console.error("Error al leer posts:", error);
+    });
+
+    return () => unsubscribe();
+  }, [character?.id]);
 
   // Publicar post
   const handlePost = async () => {
