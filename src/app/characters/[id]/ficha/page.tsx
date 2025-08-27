@@ -1,0 +1,151 @@
+// src/app/characters/[id]/ficha/page.tsx
+'use client';
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { usePublicCharacter } from '../layout';
+
+export default function PublicFichaPage() {
+  const { character, isFriend } = usePublicCharacter();
+
+  if (!isFriend) {
+    return (
+      <Card>
+        <CardContent className="text-center py-8">
+          <p className="text-muted-foreground">
+            Debes ser amigo de este personaje para ver su ficha.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const age = character.birthDate
+    ? Math.floor((new Date().getTime() - new Date(character.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+    : null;
+
+  return (
+    <div className="space-y-6">
+      {/* Información básica */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Información Básica</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Nombre</p>
+              <p className="text-base">{character.name || 'No definido'}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Usuario</p>
+              <p className="text-base">@{character.username || 'No definido'}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Edad</p>
+              <p className="text-base">{age !== null ? `${age} años` : character.age || 'No definida'}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Género</p>
+              <p className="text-base">{character.gender || 'No definido'}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Nacionalidad</p>
+              <p className="text-base">{character.nationality || 'No definida'}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">MBTI</p>
+              <p className="text-base">{character.mbti || 'No definido'}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Biografía */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Biografía</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-base leading-relaxed whitespace-pre-line">
+            {character.profile || 'No hay biografía definida.'}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Personalidad */}
+      {character.personalidad && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Personalidad</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-base leading-relaxed whitespace-pre-line">
+              {character.personalidad}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Trama principal */}
+      {character.trama && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Trama Principal</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-base leading-relaxed whitespace-pre-line">
+              {character.trama}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Etiquetas */}
+      {character.tags && character.tags.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Etiquetas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {character.tags.map((tag: string) => (
+                <Badge key={tag} variant="secondary">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Información adicional */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Información Adicional</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Fecha de creación</p>
+              <p className="text-base">
+                {character.createdAt 
+                  ? new Date(character.createdAt).toLocaleDateString() 
+                  : 'No disponible'
+                }
+              </p>
+            </div>
+            {character.birthDate && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Fecha de nacimiento</p>
+                <p className="text-base">
+                  {new Date(character.birthDate).toLocaleDateString()}
+                </p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
