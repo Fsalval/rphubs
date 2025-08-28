@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ThumbsUp, Frown, Laugh } from 'lucide-react';
+import { MoreHorizontal, ThumbsUp, Frown, Laugh, Heart } from 'lucide-react';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCharacter } from './layout';
@@ -68,6 +68,7 @@ export default function CharacterProfilePage() {
         content: cleanContent,
         visibility: 'public',
         likes: 0,
+        hearts: 0,
         heartbreaks: 0,
         laughs: 0,
         characterId: character.id,
@@ -94,6 +95,27 @@ export default function CharacterProfilePage() {
   // Eliminar post
   const handleDeletePost = (id: string) => {
     setPosts(posts.filter(p => p.id !== id));
+  };
+
+  // Función para manejar reacciones
+  const handleReaction = async (postId: string, reactionType: 'likes' | 'hearts' | 'heartbreaks' | 'laughs') => {
+    try {
+      const postRef = ref(db, `characters/${character.id}/posts/${postId}/${reactionType}`);
+      const currentPost = posts.find(p => p.id === postId);
+      if (!currentPost) return;
+
+      const newCount = (currentPost[reactionType] || 0) + 1;
+      await set(postRef, newCount);
+
+      // Actualizar estado local
+      setPosts(posts.map(p => 
+        p.id === postId 
+          ? { ...p, [reactionType]: newCount }
+          : p
+      ));
+    } catch (error) {
+      console.error('Error al actualizar reacción:', error);
+    }
   };
 
   return (
@@ -153,9 +175,8 @@ export default function CharacterProfilePage() {
         <div className="md:col-span-8 lg:col-span-9 space-y-6">
           <Tabs defaultValue="public-wall" className="w-full">
             <TabsList className="flex justify-center gap-8 border-b border-border pb-2 w-full">
-              <TabsTrigger value="public-wall">Muro Público</TabsTrigger>
-              <TabsTrigger value="private-wall">Muro Privado</TabsTrigger>
-              <TabsTrigger value="feed">Feed de Amigos</TabsTrigger>
+              <TabsTrigger value="feed">Feed</TabsTrigger>
+              <TabsTrigger value="public-wall">Mi Muro</TabsTrigger>
             </TabsList>
 
             {/* Muro Público */}
@@ -235,34 +256,42 @@ export default function CharacterProfilePage() {
                       </div>
                     </CardHeader>
                     <div className="px-6 pb-6 flex justify-around text-muted-foreground border-t pt-2 mt-4">
-                      <Button variant="ghost" size="sm" className="flex items-center gap-2 hover:text-primary">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="flex items-center gap-2 hover:text-blue-500" 
+                        onClick={() => handleReaction(post.id, 'likes')}
+                      >
                         <ThumbsUp className="h-4 w-4" /> {post.likes || 0}
                       </Button>
-                      <Button variant="ghost" size="sm" className="flex items-center gap-2 hover:text-primary">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="flex items-center gap-2 hover:text-red-500"
+                        onClick={() => handleReaction(post.id, 'hearts')}
+                      >
+                        <Heart className="h-4 w-4" /> {post.hearts || 0}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="flex items-center gap-2 hover:text-orange-500"
+                        onClick={() => handleReaction(post.id, 'heartbreaks')}
+                      >
                         <Frown className="h-4 w-4" /> {post.heartbreaks || 0}
                       </Button>
-                      <Button variant="ghost" size="sm" className="flex items-center gap-2 hover:text-primary">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="flex items-center gap-2 hover:text-yellow-500"
+                        onClick={() => handleReaction(post.id, 'laughs')}
+                      >
                         <Laugh className="h-4 w-4" /> {post.laughs || 0}
                       </Button>
                     </div>
                   </Card>
                 ))
               )}
-            </TabsContent>
-
-            {/* Muro Privado */}
-            <TabsContent value="private-wall">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Taller de Escritura</CardTitle>
-                  <p className="text-muted-foreground pt-1">
-                    Aquí puedes guardar borradores, escenas que no deseas compartir, reflexiones del personaje o ideas en desarrollo. Solo tú puedes ver esto.
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Funcionalidad de borradores en desarrollo.</p>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             {/* Feed de Amigos */}

@@ -8,25 +8,17 @@ import { usePublicCharacter } from '../layout';
 export default function PublicFichaPage() {
   const { character, isFriend } = usePublicCharacter();
 
-  if (!isFriend) {
-    return (
-      <Card>
-        <CardContent className="text-center py-8">
-          <p className="text-muted-foreground">
-            Debes ser amigo de este personaje para ver su ficha.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const age = character.birthDate
+  const age = character?.birthDate
     ? Math.floor((new Date().getTime() - new Date(character.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
     : null;
 
+  if (!character) {
+    return <div>Cargando...</div>;
+  }
+
   return (
     <div className="space-y-6">
-      {/* Información básica */}
+      {/* Información básica - SIEMPRE VISIBLE */}
       <Card>
         <CardHeader>
           <CardTitle>Información Básica</CardTitle>
@@ -73,8 +65,8 @@ export default function PublicFichaPage() {
         </CardContent>
       </Card>
 
-      {/* Personalidad */}
-      {character.personalidad && (
+      {/* Personalidad - SOLO PARA AMIGOS */}
+      {isFriend && character.personalidad && (
         <Card>
           <CardHeader>
             <CardTitle>Personalidad</CardTitle>
@@ -87,8 +79,8 @@ export default function PublicFichaPage() {
         </Card>
       )}
 
-      {/* Trama principal */}
-      {character.trama && (
+      {/* Trama principal - SOLO PARA AMIGOS */}
+      {isFriend && character.trama && (
         <Card>
           <CardHeader>
             <CardTitle>Trama Principal</CardTitle>
@@ -101,7 +93,7 @@ export default function PublicFichaPage() {
         </Card>
       )}
 
-      {/* Etiquetas */}
+      {/* Etiquetas - PÚBLICO */}
       {character.tags && character.tags.length > 0 && (
         <Card>
           <CardHeader>
@@ -119,7 +111,7 @@ export default function PublicFichaPage() {
         </Card>
       )}
 
-      {/* Información adicional */}
+      {/* Información adicional - PÚBLICO */}
       <Card>
         <CardHeader>
           <CardTitle>Información Adicional</CardTitle>
@@ -135,7 +127,8 @@ export default function PublicFichaPage() {
                 }
               </p>
             </div>
-            {character.birthDate && (
+            {/* Fecha de nacimiento - SOLO PARA AMIGOS */}
+            {isFriend && character.birthDate && (
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Fecha de nacimiento</p>
                 <p className="text-base">
@@ -146,6 +139,20 @@ export default function PublicFichaPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Mensaje para no amigos */}
+      {!isFriend && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Contenido Privado</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              Para ver más información sobre este personaje, envíele una solicitud de amistad.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

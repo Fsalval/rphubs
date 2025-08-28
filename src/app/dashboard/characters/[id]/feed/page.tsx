@@ -89,14 +89,14 @@ export default function FeedPage() {
 
   // Cargar posts del feed
   useEffect(() => {
-    if (!character?.id || friends.length === 0) {
+    if (!character?.id) {
       setPosts([]);
       setLoading(false);
       return;
     }
 
     loadFeedPosts();
-  }, [friends, character]);
+  }, [friends, character, allCharacters]);
 
   // Aplicar filtros
   useEffect(() => {
@@ -104,56 +104,77 @@ export default function FeedPage() {
   }, [posts, filters]);
 
   const loadFeedPosts = async () => {
+    setLoading(true);
     try {
       const allPosts: Post[] = [];
 
-      // Cargar posts de amigos
-      for (const friendId of friends) {
-        const postsSnapshot = await get(ref(db, `characters/${friendId}/posts`));
-        if (postsSnapshot.exists()) {
-          const postsData = postsSnapshot.val();
-          const friendCharacter = allCharacters.find((char: any) => char.id === friendId);
-          
-          Object.entries(postsData).forEach(([postId, post]: [string, any]) => {
-            if (post.visibility === 'public' || post.visibility === 'friends') {
-              allPosts.push({
-                id: postId,
-                ...post,
-                characterName: friendCharacter?.name || 'Usuario',
-                characterUsername: friendCharacter?.username || 'user',
-                characterAvatar: friendCharacter?.avatarUrl,
-                characterId: friendId,
-                type: post.type || 'post'
-              });
-            }
+      // Incluir posts propios
+      const ownPostsSnapshot = await get(ref(db, `characters/${character.id}/posts`));
+      if (ownPostsSnapshot.exists()) {
+        const postsData = ownPostsSnapshot.val();
+        
+        Object.entries(postsData).forEach(([postId, post]: [string, any]) => {
+          allPosts.push({
+            id: postId,
+            ...post,
+            characterName: character.name,
+            characterUsername: character.username,
+            characterAvatar: character.avatarUrl,
+            characterId: character.id,
+            type: post.type || 'post'
           });
-        }
+        });
+      }
 
-        // Cargar actividad de tramas públicas
-        const tramasSnapshot = await get(ref(db, `characters/${friendId}/tramas`));
-        if (tramasSnapshot.exists()) {
-          const tramasData = tramasSnapshot.val();
-          const friendCharacter = allCharacters.find((char: any) => char.id === friendId);
-          
-          Object.entries(tramasData).forEach(([tramaId, trama]: [string, any]) => {
-            if (trama.visibility === 'public' || 
-                (trama.visibility === 'friends' && friends.includes(friendId))) {
-              
-              // Agregar la trama como un post
-              allPosts.push({
-                id: `trama-${tramaId}`,
-                content: `Nueva trama: "${trama.name}"\n${trama.description || ''}`,
-                time: trama.createdAt || new Date().toISOString(),
-                visibility: trama.visibility,
-                characterName: friendCharacter?.name || 'Usuario',
-                characterUsername: friendCharacter?.username || 'user',
-                characterAvatar: friendCharacter?.avatarUrl,
-                characterId: friendId,
-                type: 'trama',
-                tags: trama.tags || []
-              });
-            }
-          });
+      // Cargar posts de amigos si hay amigos
+      if (friends.length > 0) {
+        for (const friendId of friends) {
+          const postsSnapshot = await get(ref(db, `characters/${friendId}/posts`));
+          if (postsSnapshot.exists()) {
+            const postsData = postsSnapshot.val();
+            const friendCharacter = allCharacters.find((char: any) => char.id === friendId);
+            
+            Object.entries(postsData).forEach(([postId, post]: [string, any]) => {
+              if (post.visibility === 'public' || post.visibility === 'friends') {
+                allPosts.push({
+                  id: postId,
+                  ...post,
+                  characterName: friendCharacter?.name || 'Usuario',
+                  characterUsername: friendCharacter?.username || 'user',
+                  characterAvatar: friendCharacter?.avatarUrl,
+                  characterId: friendId,
+                  type: post.type || 'post'
+                });
+              }
+            });
+          }
+
+          // Cargar actividad de tramas públicas
+          const tramasSnapshot = await get(ref(db, `characters/${friendId}/tramas`));
+          if (tramasSnapshot.exists()) {
+            const tramasData = tramasSnapshot.val();
+            const friendCharacter = allCharacters.find((char: any) => char.id === friendId);
+            
+            Object.entries(tramasData).forEach(([tramaId, trama]: [string, any]) => {
+              if (trama.visibility === 'public' || 
+                  (trama.visibility === 'friends' && friends.includes(friendId))) {
+                
+                // Agregar la trama como un post
+                allPosts.push({
+                  id: `trama-${tramaId}`,
+                  content: `Nueva trama: "${trama.name}"\n${trama.description || ''}`,
+                  time: trama.createdAt || new Date().toISOString(),
+                  visibility: trama.visibility,
+                  characterName: friendCharacter?.name || 'Usuario',
+                  characterUsername: friendCharacter?.username || 'user',
+                  characterAvatar: friendCharacter?.avatarUrl,
+                  characterId: friendId,
+                  type: 'trama',
+                  tags: trama.tags || []
+                });
+              }
+            });
+          }
         }
       }
 

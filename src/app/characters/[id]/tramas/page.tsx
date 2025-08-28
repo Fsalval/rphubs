@@ -115,7 +115,7 @@ export default function PublicTramasPage() {
               <div className="space-y-2">
                 {tramas.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    No hay tramas visibles
+                    Sin tramas visibles
                   </p>
                 ) : (
                   tramas.map((trama) => (
@@ -170,7 +170,7 @@ export default function PublicTramasPage() {
             <Card>
               <CardContent className="text-center py-8">
                 <p className="text-muted-foreground">
-                  Este personaje no tiene tramas visibles para ti.
+                  Para ver las tramas de este personaje, envíele una solicitud de amistad.
                 </p>
               </CardContent>
             </Card>

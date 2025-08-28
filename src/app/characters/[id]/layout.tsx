@@ -1,29 +1,35 @@
-// src/app/characters/[id]/layout.tsx
 'use client';
 
 import { useEffect, useState, createContext, useContext } from 'react';
-import { useParams, usePathname } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, get, set } from 'firebase/database';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { UserPlus, MessageSquare, ArrowLeft, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 
 // Contexto para compartir el personaje
 const PublicCharacterContext = createContext<any>(null);
 
 export function usePublicCharacter() {
-  return useContext(PublicCharacterContext);
+  const context = useContext(PublicCharacterContext);
+  if (!context) {
+    throw new Error('usePublicCharacter debe usarse dentro de PublicCharacterLayout');
+  }
+  return context;
 }
 
 export default function PublicCharacterLayout({ children }: { children: React.ReactNode }) {
   const { id } = useParams();
   const pathname = usePathname();
+  const router = useRouter(); // ✅ Hook en nivel superior
   const characterId = Array.isArray(id) ? id[0] : id;
 
   const [character, setCharacter] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [currentUserCharacter, setCurrentUserCharacter] = useState<any>(null);
-  const [isFriend, setIsFriend] = useState(false);
+  const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'pending_sent' | 'pending_received' | 'friends'>('none');
 
   // Detectar usuario
   useEffect(() => {
@@ -34,17 +40,23 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
   // Cargar personaje del usuario actual
   useEffect(() => {
     if (!user) return;
-    const charactersRef = ref(db, 'characters');
-    const unsubscribe = onValue(charactersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const userCharacter = Object.entries(data).find(([key, char]: any) => char.userId === user.uid);
-        if (userCharacter) {
-          const [characterId, characterData] = userCharacter;
-          setCurrentUserCharacter({ id: characterId, ...(characterData as any) });
-        }
+
+    const userRef = ref(db, `users/${user.uid}`);
+    const unsubscribe = onValue(userRef, (snapshot) => {
+      const userData = snapshot.val();
+      const activeCharacterId = userData?.activeCharacterId;
+
+      if (activeCharacterId) {
+        const characterRef = ref(db, `characters/${activeCharacterId}`);
+        onValue(characterRef, (charSnapshot) => {
+          const characterData = charSnapshot.val();
+          if (characterData) {
+            setCurrentUserCharacter({ id: activeCharacterId, ...characterData });
+          }
+        });
       }
     });
+
     return () => unsubscribe();
   }, [user]);
 
@@ -61,14 +73,43 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
     return () => unsubscribe();
   }, [characterId]);
 
-  // Verificar si son amigos
+  // Verificar estado de amistad y solicitudes
   useEffect(() => {
-    if (!characterId || !currentUserCharacter) return;
-    const friendsRef = ref(db, `characters/${characterId}/friends/${currentUserCharacter.id}`);
-    const unsubscribe = onValue(friendsRef, (snapshot) => {
-      setIsFriend(snapshot.exists() && snapshot.val() === true);
-    });
-    return () => unsubscribe();
+    if (!characterId || !currentUserCharacter) {
+      setFriendshipStatus('none');
+      return;
+    }
+
+    const checkFriendship = async () => {
+      try {
+        const friends1 = await get(ref(db, `characters/${characterId}/friends/${currentUserCharacter.id}`));
+        const friends2 = await get(ref(db, `characters/${currentUserCharacter.id}/friends/${characterId}`));
+
+        if (friends1.exists() && friends2.exists()) {
+          setFriendshipStatus('friends');
+          return;
+        }
+
+        const sent = await get(ref(db, `characters/${characterId}/friendRequests/${currentUserCharacter.id}`));
+        if (sent.exists() && sent.val() === true) {
+          setFriendshipStatus('pending_sent');
+          return;
+        }
+
+        const received = await get(ref(db, `characters/${currentUserCharacter.id}/friendRequests/${characterId}`));
+        if (received.exists() && received.val() === true) {
+          setFriendshipStatus('pending_received');
+          return;
+        }
+
+        setFriendshipStatus('none');
+      } catch (error) {
+        console.error('Error checking friendship status:', error);
+        setFriendshipStatus('none');
+      }
+    };
+
+    checkFriendship();
   }, [characterId, currentUserCharacter]);
 
   if (!character) {
@@ -81,8 +122,62 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
 
   const isMainProfile = pathname === `/characters/${characterId}`;
 
+  // Función para manejar solicitudes de amistad
+  const handleFriendRequest = async () => {
+    if (!currentUserCharacter || !characterId) return;
+
+    try {
+      if (currentUserCharacter.id === characterId) {
+        console.log('No puedes enviarte solicitud a ti mismo');
+        return;
+      }
+
+      if (friendshipStatus === 'friends') {
+        // Eliminar amigo
+        await set(ref(db, `characters/${characterId}/friends/${currentUserCharacter.id}`), null);
+        await set(ref(db, `characters/${currentUserCharacter.id}/friends/${characterId}`), null);
+        setFriendshipStatus('none');
+      } else if (friendshipStatus === 'pending_received') {
+        // Aceptar solicitud
+        await set(ref(db, `characters/${characterId}/friends/${currentUserCharacter.id}`), true);
+        await set(ref(db, `characters/${currentUserCharacter.id}/friends/${characterId}`), true);
+        await set(ref(db, `characters/${currentUserCharacter.id}/friendRequests/${characterId}`), null);
+        setFriendshipStatus('friends');
+      } else if (friendshipStatus === 'pending_sent') {
+        // Cancelar solicitud
+        await set(ref(db, `characters/${characterId}/friendRequests/${currentUserCharacter.id}`), null);
+        setFriendshipStatus('none');
+      } else {
+        // Enviar solicitud
+        await set(ref(db, `characters/${characterId}/friendRequests/${currentUserCharacter.id}`), true);
+        setFriendshipStatus('pending_sent');
+      }
+    } catch (error) {
+      console.error('Error managing friendship:', error);
+    }
+  };
+
+  // Función para rechazar solicitud
+  const handleRejectRequest = async () => {
+    if (!currentUserCharacter || !characterId) return;
+
+    try {
+      await set(ref(db, `characters/${currentUserCharacter.id}/friendRequests/${characterId}`), null);
+    } catch (error) {
+      console.error('Error rejecting request:', error);
+    }
+  };
+
+  // Función para abrir chat de mensajes
+   // Abrir chat en el dashboard
+  const handleStartMessage = () => {
+    if (!currentUserCharacter || !characterId) return;
+    // Navega a tu dashboard y abre el chat
+    router.push(`/dashboard/characters/${currentUserCharacter.id}/messages?chat=${characterId}`);
+  };
+  
   return (
-    <PublicCharacterContext.Provider value={{ character, user, currentUserCharacter, isFriend }}>
+    <PublicCharacterContext.Provider value={{ character, user, currentUserCharacter, isFriend: friendshipStatus === 'friends' }}>
       <div className="min-h-screen bg-secondary">
         {/* Header del personaje */}
         <header className="bg-background/80 backdrop-blur-sm sticky top-0 z-20 border-b">
@@ -101,6 +196,61 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
                   )}
                 </div>
               </div>
+
+              <div className="flex items-center gap-2">
+                {/* Botones de acción */}
+                {currentUserCharacter && currentUserCharacter.id !== characterId && (
+                  <div className="flex gap-2">
+                    {friendshipStatus === 'friends' && (
+                      <Button size="sm" variant="outline" onClick={handleFriendRequest}>
+                        <UserCheck className="h-4 w-4 mr-2" />
+                        Eliminar amigo
+                      </Button>
+                    )}
+
+                    {friendshipStatus === 'pending_sent' && (
+                      <Button size="sm" variant="outline" onClick={handleFriendRequest}>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Cancelar solicitud
+                      </Button>
+                    )}
+
+                    {friendshipStatus === 'pending_received' && (
+                      <>
+                        <Button size="sm" variant="default" onClick={handleFriendRequest}>
+                          <UserCheck className="h-4 w-4 mr-2" />
+                          Aceptar solicitud
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={handleRejectRequest}>
+                          Rechazar
+                        </Button>
+                      </>
+                    )}
+
+                    {friendshipStatus === 'none' && (
+                      <Button size="sm" variant="default" onClick={handleFriendRequest}>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Enviar solicitud
+                      </Button>
+                    )}
+
+                    <Button size="sm" variant="outline" onClick={handleStartMessage}>
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Mensaje
+                    </Button>
+                  </div>
+                )}
+
+                {/* Volver a mi perfil */}
+                {currentUserCharacter && currentUserCharacter.id !== characterId && (
+                  <Link href={`/dashboard/characters/${currentUserCharacter.id}`}>
+                    <Button size="sm" variant="ghost">
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Volver a mi perfil
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -109,40 +259,30 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
         <nav className="bg-background border-b sticky top-16 z-10">
           <div className="container mx-auto px-4">
             <div className="flex justify-center gap-8 py-2">
-              <Link 
+              <Link
                 href={`/characters/${characterId}`}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  isMainProfile 
-                    ? 'border-primary' 
-                    : 'border-transparent hover:border-primary'
+                  isMainProfile ? 'border-primary' : 'border-transparent hover:border-primary'
                 }`}
               >
                 Muro
               </Link>
-              {isFriend && (
-                <>
-                  <Link 
-                    href={`/characters/${characterId}/ficha`}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                      pathname === `/characters/${characterId}/ficha`
-                        ? 'border-primary' 
-                        : 'border-transparent hover:border-primary'
-                    }`}
-                  >
-                    Ficha
-                  </Link>
-                  <Link 
-                    href={`/characters/${characterId}/tramas`}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                      pathname === `/characters/${characterId}/tramas`
-                        ? 'border-primary' 
-                        : 'border-transparent hover:border-primary'
-                    }`}
-                  >
-                    Tramas
-                  </Link>
-                </>
-              )}
+              <Link
+                href={`/characters/${characterId}/ficha`}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  pathname === `/characters/${characterId}/ficha` ? 'border-primary' : 'border-transparent hover:border-primary'
+                }`}
+              >
+                Ficha
+              </Link>
+              <Link
+                href={`/characters/${characterId}/tramas`}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  pathname === `/characters/${characterId}/tramas` ? 'border-primary' : 'border-transparent hover:border-primary'
+                }`}
+              >
+                Tramas
+              </Link>
             </div>
           </div>
         </nav>

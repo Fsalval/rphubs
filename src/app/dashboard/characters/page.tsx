@@ -15,10 +15,12 @@ export default function CharactersPage() {
   const [pinInput, setPinInput] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
+  const [showEnterPinModal, setShowEnterPinModal] = useState(false);
+  const [enterCharacterId, setEnterCharacterId] = useState<string | null>(null);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
   const user = auth.currentUser;
-  const maxCharacters = 2; // Limitado a 2 personajes
+  const maxCharacters = 3; // Límite correcto de 3 personajes
   const hasMaxCharacters = characters.length >= maxCharacters;
 
   useEffect(() => {
@@ -70,6 +72,23 @@ export default function CharactersPage() {
   const handleEnterCharacter = async (characterId: string) => {
     if (!user) return;
 
+    const character = characters.find(c => c.id === characterId);
+    
+    // Si el personaje tiene PIN, pedirlo
+    if (character?.pin) {
+      setEnterCharacterId(characterId);
+      setPinInput('');
+      setShowEnterPinModal(true);
+      return;
+    }
+
+    // Si no tiene PIN, entrar directamente
+    await enterCharacter(characterId);
+  };
+
+  const enterCharacter = async (characterId: string) => {
+    if (!user) return;
+
     try {
       // Guardar el characterId como activo
       await update(ref(db, `users/${user.uid}`), {
@@ -81,6 +100,23 @@ export default function CharactersPage() {
 
     // Redirigir
     window.location.href = `/dashboard/characters/${characterId}`;
+  };
+
+  const confirmEnterCharacter = async () => {
+    if (!enterCharacterId || !user) return;
+    
+    const character = characters.find(c => c.id === enterCharacterId);
+    
+    if (character?.pin && character.pin !== pinInput) {
+      alert('PIN incorrecto');
+      return;
+    }
+
+    setShowEnterPinModal(false);
+    setEnterCharacterId(null);
+    setPinInput('');
+    
+    await enterCharacter(enterCharacterId);
   };
 
   return (
@@ -136,7 +172,7 @@ export default function CharactersPage() {
                   <div className="relative">
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={() => toggleMenu(char.id)}
                     >
                       <Settings className="h-4 w-4" />
@@ -216,8 +252,57 @@ export default function CharactersPage() {
               }}>
                 Cancelar
               </Button>
-              <Button variant="destructive" onClick={confirmDelete}>
+              <Button variant="secondary" onClick={confirmDelete}>
                 Eliminar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para PIN de entrada */}
+      {showEnterPinModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => {
+            setShowEnterPinModal(false);
+            setEnterCharacterId(null);
+            setPinInput('');
+          }}
+        >
+          <div 
+            className="bg-background p-6 rounded-lg shadow-lg w-80"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-4">Acceso al Personaje</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Este personaje requiere PIN. Ingresa el PIN para continuar.
+            </p>
+
+            <input
+              type="password"
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value)}
+              placeholder="PIN del personaje"
+              className="w-full p-2 border rounded mb-4"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  confirmEnterCharacter();
+                }
+              }}
+            />
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => {
+                setShowEnterPinModal(false);
+                setEnterCharacterId(null);
+                setPinInput('');
+              }}>
+                Cancelar
+              </Button>
+              <Button onClick={confirmEnterCharacter}>
+                Ingresar
               </Button>
             </div>
           </div>

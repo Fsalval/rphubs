@@ -20,24 +20,19 @@ export default function CreateCharacterPage() {
   const [formData, setFormData] = useState({
     name: '',
     username: '',
-    bio: '',
     gender: '',
+    nationality: '',
     birthDate: '',
     pin: '',
     avatarUrl: '',
-    bannerUrl: '',
   });
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    if (name === 'name' || name === 'bio') {
-      setFormData({ ...formData, [name]: DOMPurify.sanitize(value) });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
+    setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -74,19 +69,19 @@ export default function CreateCharacterPage() {
         return;
       }
 
-      // Validar límite de 4 personajes
+      // Validar límite de 3 personajes
       const snapshot = await get(ref(db, 'characters'));
       const data = snapshot.val() || {};
-      const userCharacters = Object.values(data).filter((char) => char.userId === user.uid);
+      const userCharacters = Object.values(data).filter((char: any) => char.userId === user.uid);
       
-      if (userCharacters.length >= 4) {
-        setError('Solo puedes tener 4 personajes como máximo.');
+      if (userCharacters.length >= 3) {
+        setError('Solo puedes tener 3 personajes como máximo.');
         setLoading(false);
         return;
       }
 
       // Validar username único
-      const existingUsernames = Object.values(data).map((char) => char.username);
+      const existingUsernames = Object.values(data).map((char: any) => char.username);
       if (existingUsernames.includes(formData.username)) {
         setError('Este nombre de usuario ya está en uso.');
         setLoading(false);
@@ -102,7 +97,6 @@ export default function CreateCharacterPage() {
         ...formData,
         userId: user.uid,
         avatarUrl: formData.avatarUrl || 'https://placehold.co/400x400.png',
-        bannerUrl: formData.bannerUrl || '',
         createdAt: new Date().toISOString(),
         tags: [],
       });
@@ -114,8 +108,8 @@ export default function CreateCharacterPage() {
 
       // Redirigir
       router.push(`/dashboard/characters/${newCharId}`);
-    } catch (err) {
-      setError(err.message);
+    } catch (err: any) {
+      setError(err.message || 'Error desconocido');
     } finally {
       setLoading(false);
     }
@@ -126,10 +120,10 @@ export default function CreateCharacterPage() {
       <h1 className="text-2xl font-bold mb-6">Crear Nuevo Personaje</h1>
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label>Nombre del personaje</Label>
+            <Label>Nombre del personaje *</Label>
             <Input
               name="name"
               value={formData.name}
@@ -139,7 +133,7 @@ export default function CreateCharacterPage() {
             />
           </div>
           <div>
-            <Label>Username (@)</Label>
+            <Label>Username (@) *</Label>
             <Input
               name="username"
               value={formData.username}
@@ -150,43 +144,49 @@ export default function CreateCharacterPage() {
           </div>
         </div>
 
-        <div>
-          <Label>Biografía</Label>
-          <Textarea
-            name="bio"
-            value={formData.bio}
-            onChange={handleChange}
-            placeholder="Detective con pasado oscuro, cínico, pero con sentido de justicia..."
-            rows={4}
-          />
-        </div>
-
-        <div>
-          <Label>Banner del perfil</Label>
-          <ImageUpload
-            value={formData.bannerUrl}
-            onChange={(url) => setFormData({ ...formData, bannerUrl: url })}
-            variant="banner"
-            folder="characters/banners"
-            placeholder="Subir banner del perfil"
-            maxWidth={1200}
-            maxHeight={400}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label>Fecha de nacimiento</Label>
+            <Label>Género</Label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              className="w-full p-2 border border-gray-300 rounded text-sm bg-white"
+            >
+              <option value="">Selecciona un género</option>
+              <option value="hombre">Hombre</option>
+              <option value="mujer">Mujer</option>
+              <option value="no-binario">No binario</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div>
+            <Label>Nacionalidad</Label>
+            <Input
+              name="nationality"
+              value={formData.nationality}
+              onChange={handleChange}
+              placeholder="Ej: Española, Mexicana, Argentina..."
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label>Fecha de nacimiento *</Label>
+            <p className="text-sm text-gray-600 mb-2">Mínimo 15 años de edad</p>
             <Input
               name="birthDate"
               type="date"
               value={formData.birthDate}
               onChange={handleChange}
+              max={new Date(new Date().setFullYear(new Date().getFullYear() - 15)).toISOString().split('T')[0]}
               required
             />
           </div>
           <div>
-            <Label>PIN de seguridad</Label>
+            <Label>PIN de seguridad *</Label>
+            <p className="text-sm text-gray-600 mb-2">4-6 dígitos para proteger tu personaje</p>
             <Input
               name="pin"
               type="password"
@@ -196,39 +196,42 @@ export default function CreateCharacterPage() {
               required
               minLength={4}
               maxLength={6}
-            />
-          </div>
-          <div>
-            <Label>Foto de perfil</Label>
-            <ImageUpload
-              value={formData.avatarUrl}
-              onChange={(url) => setFormData({ ...formData, avatarUrl: url })}
-              variant="avatar"
-              folder="characters/avatars"
-              placeholder="Subir foto de perfil"
+              pattern="\d{4,6}"
             />
           </div>
         </div>
 
         <div>
-          <Label>Género</Label>
-          <select
-            name="gender"
-            value={formData.gender}
-            onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded text-sm bg-white"
-          >
-            <option value="">Selecciona un género</option>
-            <option value="hombre">Hombre</option>
-            <option value="mujer">Mujer</option>
-            <option value="no-binario">No binario</option>
-            <option value="otro">Otro</option>
-          </select>
+          <Label>Foto de perfil</Label>
+          <div className="space-y-2">
+            <Input
+              type="url"
+              value={formData.avatarUrl}
+              onChange={handleChange}
+              name="avatarUrl"
+              placeholder="URL de la imagen (ej: https://ejemplo.com/imagen.jpg)"
+            />
+            <p className="text-sm text-gray-600">
+              Por ahora, usa un enlace directo a tu imagen. Próximamente habilitaremos la subida de archivos.
+            </p>
+            {formData.avatarUrl && (
+              <div className="mt-2">
+                <img 
+                  src={formData.avatarUrl} 
+                  alt="Vista previa" 
+                  className="w-20 h-20 rounded-full object-cover border"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-4 pt-6">
           <Button type="submit" disabled={loading}>
-            {loading ? 'Guardando...' : 'Crear Personaje'}
+            {loading ? 'Creando personaje...' : 'Crear Personaje'}
           </Button>
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancelar
