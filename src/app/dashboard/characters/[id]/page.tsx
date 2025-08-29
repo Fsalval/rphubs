@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCharacter } from './layout';
 import { sanitize } from '@/lib/sanitize';
-import { ref, push, set , onValue } from 'firebase/database';
+import { ref, push, set , onValue , remove } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
 export default function CharacterProfilePage() {
@@ -22,7 +22,7 @@ export default function CharacterProfilePage() {
   const [content, setContent] = useState('');
   const [editingPost, setEditingPost] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
-  const [postVisibility, setPostVisibility] = useState<'public' | 'friends'>('public');
+  const [postVisibility, setPostVisibility] = useState<'public' | 'friends'>('friends');
 
   useEffect(() => {
     if (!character?.id) return;
@@ -88,15 +88,35 @@ export default function CharacterProfilePage() {
     }
   };
 
-  // Editar post
-  const handleEditPost = () => {
-    setPosts(posts.map(p => p.id === editingPost ? { ...p, content: sanitize(editContent) } : p));
-    setEditingPost(null);
+  const handleEditPost = async () => {
+    if (!editingPost || !editContent.trim()) return;
+
+    const cleanContent = sanitize(editContent);
+    
+    try {
+      const postRef = ref(db, `characters/${character.id}/posts/${editingPost}/content`);
+      await set(postRef, cleanContent);
+
+      setPosts(posts.map(p => 
+        p.id === editingPost 
+          ? { ...p, content: cleanContent }
+          : p
+      ));
+      setEditingPost(null);
+    } catch (error) {
+      console.error('Error al editar el post:', error);
+      alert('No se pudo guardar la edición.');
+    }
   };
 
-  // Eliminar post
-  const handleDeletePost = (id: string) => {
-    setPosts(posts.filter(p => p.id !== id));
+  const handleDeletePost = async (id: string) => {
+    try {
+      await remove(ref(db, `characters/${character.id}/posts/${id}`));
+      setPosts(posts.filter(p => p.id !== id));
+    } catch (error) {
+      console.error('Error al eliminar el post:', error);
+      alert('No se pudo eliminar el post.');
+    }
   };
 
   // Función para cambiar visibilidad de un post
@@ -202,46 +222,55 @@ export default function CharacterProfilePage() {
             <TabsContent value="public-wall" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <div className="flex gap-4 items-start">
+                  <div className="flex gap-4">
                     <Avatar>
                       <AvatarImage src={character.avatarUrl} />
                       <AvatarFallback>{character.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <Textarea
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      placeholder="¿Qué está pensando tu personaje?"
-                      className="flex-1 bg-background border-border focus-visible:ring-1"
-                      rows={3}
-                    />
+                    <div className="flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <p className="font-bold">{character.name}</p>
+                        <p className="text-sm text-muted-foreground">@{character.username}</p>
+                        <p className="text-sm text-muted-foreground">&middot;</p>
+                        <p className="text-sm text-muted-foreground">ahora</p>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          {postVisibility === 'public' ? <Eye className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+                          <span>{postVisibility === 'public' ? 'Público' : 'Amigos'}</span>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <Textarea
+                          value={content}
+                          onChange={(e) => setContent(e.target.value)}
+                          placeholder="¿Qué está pensando tu personaje?"
+                          className="flex-1 bg-background border-border focus-visible:ring-1 min-h-16"
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                    {/* Menú de tres puntos */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setPostVisibility(postVisibility === 'friends' ? 'public' : 'friends')}>
+                          {postVisibility === 'friends' ? 'Hacer público' : 'Volver a solo amigos'}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </CardHeader>
-                <div className="px-6 pb-6 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <Select value={postVisibility} onValueChange={(value: 'public' | 'friends') => setPostVisibility(value)}>
-                      <SelectTrigger className="w-32">
-                        <div className="flex items-center gap-2">
-                          {postVisibility === 'public' ? <Eye className="h-4 w-4" /> : <Users className="h-4 w-4" />}
-                          <span className="text-xs">{postVisibility === 'public' ? 'Público' : 'Amigos'}</span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="public">
-                          <div className="flex items-center gap-2">
-                            <Eye className="h-4 w-4" />
-                            <span>Público</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="friends">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            <span>Amigos</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={handlePost}>Publicar</Button>
+                <div className="px-6 pb-6 flex items-center justify-between border-t pt-4">
+                  <div></div>
+                  <Button 
+                    onClick={handlePost} 
+                    disabled={!content.trim()}
+                  >
+                    Publicar
+                  </Button>
                 </div>
               </Card>
 
@@ -286,7 +315,7 @@ export default function CharacterProfilePage() {
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent>
+                            <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => { setEditingPost(post.id); setEditContent(post.content); }}>
                                 Editar
                               </DropdownMenuItem>
