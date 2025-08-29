@@ -167,7 +167,6 @@ export default function FeedPage() {
 
   const applyFilters = () => {
     let filtered = [...posts];
-
     if (filters.searchTerm) {
       filtered = filtered.filter(post =>
         post.content.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
