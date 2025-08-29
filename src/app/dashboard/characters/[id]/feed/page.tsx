@@ -154,7 +154,6 @@ export default function FeedPage() {
           });
         }
       }
-
       // Ordenar por fecha
       allPosts.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
       setPosts(allPosts);
