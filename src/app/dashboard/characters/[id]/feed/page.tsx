@@ -87,11 +87,7 @@ export default function FeedPage() {
   const loadFeedPosts = async () => {
     setLoading(true);
     try {
-      const allPosts: Post[] = [];
-    } catch (error) {
-      console.error('Error loading feed posts:', error);
-    }
-
+      const allPosts: Post[] = [];     
       // Posts propios
       const ownPostsSnapshot = await get(ref(db, `characters/${character.id}/posts`));
       if (ownPostsSnapshot.exists()) {
@@ -116,7 +112,7 @@ export default function FeedPage() {
 
         // Posts del amigo
         const postsRef = ref(db, `characters/${friendId}/posts`);
-        const postsSnapshot = await get(postsRef);
+        const postsSnapshot = await get(postsRef);        
         if (postsSnapshot.exists()) {
           const postsData = postsSnapshot.val();
           Object.entries(postsData).forEach(([postId, post]: [string, any]) => {
@@ -179,11 +175,9 @@ export default function FeedPage() {
         post.tags?.some(tag => tag.toLowerCase().includes(filters.searchTerm.toLowerCase()))
       );
     }
-
     if (filters.postType !== 'all') {
       filtered = filtered.filter(post => post.type === filters.postType);
     }
-
     if (filters.timeFilter !== 'all') {
       const now = new Date();
       const filterDate = new Date();
