@@ -186,7 +186,7 @@ export function ImageUpload({
           {value ? (
             <div className="space-y-4">
               <div className="relative">
-                <img 
+                <Image 
                   src={value} 
                   alt="Preview" 
                   className="w-full h-48 object-cover rounded-lg"

@@ -22,7 +22,7 @@ export default function CharactersPage() {
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
   const [actionOnPin, setActionOnPin] = useState<'enter' | 'edit' | null>(null);
 
-  const [user, setUser] = useState<any>(null); 
+  const [user, setUser] = useState<Character | null>(null); 
   const router = useRouter();
   const maxCharacters = 3; // Límite correcto de 3 personajes
   const hasMaxCharacters = characters.length >= maxCharacters;

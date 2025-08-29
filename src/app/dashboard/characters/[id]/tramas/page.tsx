@@ -19,6 +19,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { sanitize } from '@/lib/sanitize';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 
 export default function TramasPage() {
   const { character, isOwner, allCharacters } = useCharacter();
@@ -611,7 +612,7 @@ export default function TramasPage() {
               ) : (
                 <div className="mt-1 relative">
                   <div className="relative rounded-lg overflow-hidden">
-                    <img
+                    <Image
                       src={newTramaImageUrl}
                       alt="Banner de la trama"
                       className="w-full h-48 object-cover"
@@ -777,7 +778,7 @@ export default function TramasPage() {
                     {/* Banner de la trama */}
                     {trama.imageUrl && (
                       <div className="mb-4">
-                        <img
+                        <Image
                           src={trama.imageUrl}
                           alt={`Banner de ${trama.name}`}
                           className="w-full h-64 object-cover rounded-lg"

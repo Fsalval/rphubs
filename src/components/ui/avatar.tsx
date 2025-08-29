@@ -14,7 +14,7 @@ const Avatar = ({ src, alt, fallback, className = '', ...props }: AvatarProps) =
         {...props}
         >
         {src ? (
-            <img src={src} alt={alt} className="h-full w-full object-cover" />
+            <Image src={src} alt={alt} className="h-full w-full object-cover" />
         ) : (
             <span className="text-sm font-medium text-gray-600">{fallback || '?'}</span>
         )}
@@ -24,7 +24,7 @@ const Avatar = ({ src, alt, fallback, className = '', ...props }: AvatarProps) =
 
 const AvatarImage = ({ src, alt }: { src?: string; alt?: string }) => {
     if (!src) return null;
-    return <img src={src} alt={alt} className="h-full w-full object-cover" />;
+    return <Image src={src} alt={alt} className="h-full w-full object-cover" />;
     };
 
     const AvatarFallback = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {

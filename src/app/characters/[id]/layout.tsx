@@ -1,16 +1,26 @@
 'use client';
 
 import { useEffect, useState, createContext, useContext } from 'react';
-import { useParams, usePathname, useRouter } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { ref, onValue, get, set } from 'firebase/database';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { UserPlus, MessageSquare, ArrowLeft, UserCheck } from 'lucide-react';
 import Link from 'next/link';
+import { Character } from '@/lib/types';
+import { User as FirebaseUser } from 'firebase/auth'; // Asegúrate de tener esto
 
-// Contexto para compartir el personaje
-const PublicCharacterContext = createContext<any>(null);
+// === TIPOS ===
+interface PublicCharacterContextType {
+  character: Character | null;
+  user: FirebaseUser | null;
+  currentUserCharacter: Character | null;
+  isFriend: boolean;
+}
+
+// === CONTEXTO ===
+const PublicCharacterContext = createContext<PublicCharacterContextType | null>(null);
 
 export function usePublicCharacter() {
   const context = useContext(PublicCharacterContext);
@@ -23,12 +33,11 @@ export function usePublicCharacter() {
 export default function PublicCharacterLayout({ children }: { children: React.ReactNode }) {
   const { id } = useParams();
   const pathname = usePathname();
-  const router = useRouter(); // ✅ Hook en nivel superior
   const characterId = Array.isArray(id) ? id[0] : id;
 
-  const [character, setCharacter] = useState<any>(null);
-  const [user, setUser] = useState<any>(null);
-  const [currentUserCharacter, setCurrentUserCharacter] = useState<any>(null);
+  const [character, setCharacter] = useState<Character | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [currentUserCharacter, setCurrentUserCharacter] = useState<Character | null>(null);
   const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'pending_sent' | 'pending_received' | 'friends'>('none');
 
   // Detectar usuario
@@ -171,7 +180,6 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
   // Función para abrir chat de mensajes
   const handleStartMessage = () => {
     if (!currentUserCharacter || !characterId) return;
-    // Buscar el componente FloatingChat y abrirlo
     const event = new CustomEvent('openFloatingChat', { 
       detail: { targetCharacterId: characterId } 
     });
@@ -200,7 +208,6 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Botones de acción */}
                 {currentUserCharacter && currentUserCharacter.id !== characterId && (
                   <div className="flex gap-2">
                     {friendshipStatus === 'friends' && (
@@ -243,7 +250,6 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
                   </div>
                 )}
 
-                {/* Volver a mi perfil */}
                 {currentUserCharacter && currentUserCharacter.id !== characterId && (
                   <Link href={`/dashboard/characters/${currentUserCharacter.id}`}>
                     <Button size="sm" variant="ghost">
@@ -257,7 +263,6 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
           </div>
         </header>
 
-        {/* Menú de navegación */}
         <nav className="bg-background border-b sticky top-16 z-10">
           <div className="container mx-auto px-4">
             <div className="flex justify-center gap-8 py-2">

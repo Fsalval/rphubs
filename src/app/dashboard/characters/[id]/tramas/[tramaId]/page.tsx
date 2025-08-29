@@ -20,7 +20,7 @@ export default function TramaDetailPage() {
   const { id, tramaId } = useParams();
   const { character, isOwner } = useCharacter();
   
-  const [trama, setTrama] = useState<any>(null);
+  const [trama, setTrama] = useState<Character | null>(null);
   const [chapters, setChapters] = useState<any[]>([]);
   const [showNewChapter, setShowNewChapter] = useState(false);
   const [newChapterTitle, setNewChapterTitle] = useState('');

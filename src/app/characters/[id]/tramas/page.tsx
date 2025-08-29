@@ -1,20 +1,19 @@
-// src/app/characters/[id]/tramas/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { BookOpen, Users, Eye } from 'lucide-react';
 import { usePublicCharacter } from '../layout';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import { Story } from '@/lib/types'; // ✅ Importa el tipo
 
 export default function PublicTramasPage() {
-  const { character, user, currentUserCharacter, isFriend } = usePublicCharacter();
+  const { character, currentUserCharacter, isFriend } = usePublicCharacter(); // ✅ 'user' eliminado
   
-  const [tramas, setTramas] = useState<any[]>([]);
-  const [tramaResponses, setTramaResponses] = useState<{[key: string]: any[]}>({});
+  const [tramas, setTramas] = useState<Story[]>([]);
+  const [tramaResponses, setTramaResponses] = useState<Record<string, Story[]>>({});
   const [scrollTarget, setScrollTarget] = useState<string | null>(null);
 
   // Cargar tramas
@@ -25,16 +24,16 @@ export default function PublicTramasPage() {
       const data = snapshot.val();
       if (data) {
         const tramasArray = Object.entries(data)
-          .map(([key, value]: any) => ({ ...value, id: key }))
-          .filter((trama: any) => {
-            // Filtrar por visibilidad
+          .map(([key, value]: [string, any]) => ({ ...value, id: key })) // ✅ any en el map, pero el resultado es Story
+          .filter((trama: Story) => {
+            // ✅ Ahora `trama` tiene tipo
             if (trama.visibility === 'public') return true;
             if (trama.visibility === 'friends' && isFriend) return true;
             if (trama.visibility === 'private' && currentUserCharacter && trama.collaborators?.includes(currentUserCharacter.id)) return true;
             return false;
           })
           .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-        setTramas(tramasArray);
+        setTramas(tramasArray as Story[]); // ✅ Forzamos el tipo
       } else {
         setTramas([]);
       }
@@ -48,17 +47,20 @@ export default function PublicTramasPage() {
     
     tramas.forEach(trama => {
       const responsesRef = ref(db, `characters/${character.id}/tramas/${trama.id}/responses`);
-      onValue(responsesRef, (snapshot) => {
+      const unsubscribe = onValue(responsesRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
           const responsesArray = Object.entries(data)
-            .map(([key, value]: any) => ({ ...value, id: key }))
+            .map(([key, value]: [string, any]) => ({ ...value, id: key }))
             .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
-          setTramaResponses(prev => ({ ...prev, [trama.id]: responsesArray }));
+          setTramaResponses(prev => ({ ...prev, [trama.id]: responsesArray as Story[] }));
         } else {
           setTramaResponses(prev => ({ ...prev, [trama.id]: [] }));
         }
       });
+
+      // ✅ Importante: devuelve la función de limpieza
+      return () => unsubscribe();
     });
   }, [tramas, character?.id]);
 
@@ -75,7 +77,7 @@ export default function PublicTramasPage() {
       }
       setScrollTarget(null);
     }
-  }, [scrollTarget, tramas]);
+  }, [scrollTarget]);
 
   const getVisibilityIcon = (visibility: string) => {
     switch (visibility) {
@@ -108,7 +110,7 @@ export default function PublicTramasPage() {
       <div className="w-80 flex-shrink-0">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Tramas de {character.name}</CardTitle>
+            <CardTitle className="text-lg">Tramas de {character?.name}</CardTitle>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-96">
@@ -158,7 +160,7 @@ export default function PublicTramasPage() {
       {/* Contenido principal */}
       <div className="flex-1 space-y-6 overflow-y-auto pr-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Tramas de {character.name}</h2>
+          <h2 className="text-2xl font-bold">Tramas de {character?.name}</h2>
           <div className="text-sm text-muted-foreground">
             {tramas.length} trama{tramas.length !== 1 ? 's' : ''} visible{tramas.length !== 1 ? 's' : ''}
           </div>
@@ -245,11 +247,11 @@ export default function PublicTramasPage() {
                     <div className="flex items-center justify-between pt-4 border-t text-xs text-muted-foreground mt-4">
                       <span>
                         Visibilidad: {trama.visibility === 'public' ? 'Pública' : 
-                                     trama.visibility === 'friends' ? 'Solo amigos' : 'Privada'}
+                                      trama.visibility === 'friends' ? 'Solo amigos' : 'Privada'}
                       </span>
                       <span>
                         Respuestas: {trama.responseConfig === 'anyone' ? 'Cualquiera' : 
-                                   trama.responseConfig === 'friends' ? 'Solo amigos' : 'Solo colaboradores'}
+                                    trama.responseConfig === 'friends' ? 'Solo amigos' : 'Solo colaboradores'}
                       </span>
                     </div>
                   </div>

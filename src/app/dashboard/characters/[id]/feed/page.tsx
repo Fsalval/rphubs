@@ -10,23 +10,12 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { 
-  Heart, 
-  MessageCircle, 
-  Share2, 
-  MoreHorizontal, 
-  Filter,
-  Search,
-  Users,
-  Globe,
-  Calendar,
-  TrendingUp,
-  Send
-} from 'lucide-react';
+import {  Heart, MessageCircle, Share2, MoreHorizontal, Filter, Search, Users, Globe, Calendar, TrendingUp, Send } from 'lucide-react';
 import { useCharacter } from '../layout';
 import { sanitize } from '@/lib/sanitize';
 import { ref, get, push, set, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import Image from 'next/image';
 
 interface Post {
   id: string;
@@ -128,27 +117,37 @@ export default function FeedPage() {
       }
 
       // Cargar posts de amigos si hay amigos
-      if (friends.length > 0) {
-        for (const friendId of friends) {
-          const postsSnapshot = await get(ref(db, `characters/${friendId}/posts`));
-          if (postsSnapshot.exists()) {
-            const postsData = postsSnapshot.val();
-            const friendCharacter = allCharacters.find((char: any) => char.id === friendId);
-            
-            Object.entries(postsData).forEach(([postId, post]: [string, any]) => {
-              if (post.visibility === 'public' || post.visibility === 'friends') {
-                allPosts.push({
-                  id: postId,
-                  ...post,
-                  characterName: friendCharacter?.name || 'Usuario',
-                  characterUsername: friendCharacter?.username || 'user',
-                  characterAvatar: friendCharacter?.avatarUrl,
-                  characterId: friendId,
-                  type: post.type || 'post'
-                });
-              }
-            });
-          }
+    if (friends.length > 0) {
+      console.log('Amigos encontrados:', friends);
+      for (const friendId of friends) {
+        console.log('Cargando posts de amigo:', friendId);
+        const postsRef = ref(db, `characters/${friendId}/posts`);
+        const snapshot = await get(postsRef);
+        
+        if (snapshot.exists()) {
+          const postsData = snapshot.val();
+          console.log('Posts del amigo:', postsData);
+          const friendCharacter = allCharacters.find((char: any) => char.id === friendId);
+
+          Object.entries(postsData).forEach(([postId, post]: [string, any]) => {
+            console.log('Post procesado:', postId, post.visibility);
+            if (post.visibility === 'public' || post.visibility === 'friends') {
+              allPosts.push({
+                id: postId,
+                ...post,
+                characterName: friendCharacter?.name || 'Usuario',
+                characterUsername: friendCharacter?.username || 'user',
+                characterAvatar: friendCharacter?.avatarUrl,
+                characterId: friendId,
+                type: post.type || 'post'
+              });
+            }
+          });
+        } else {
+          console.log('No hay posts para:', friendId);
+        }
+      }
+    }
 
           // Cargar actividad de tramas públicas
           const tramasSnapshot = await get(ref(db, `characters/${friendId}/tramas`));
@@ -270,7 +269,9 @@ export default function FeedPage() {
       setNewPost('');
       
       // Recargar posts
-      loadFeedPosts();
+      useEffect(() => {
+        loadFeedPosts();
+      }, [loadFeedPosts]);
       
       console.log('Post enviado exitosamente');
     } catch (error) {

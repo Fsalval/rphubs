@@ -22,6 +22,7 @@ import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCharacter } from '../../../layout';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Chapter {
   id: string;
@@ -153,7 +154,7 @@ export default function TramaLecturaPage() {
           <Card>
             <CardContent className="p-4">
               {trama.coverImage && (
-                <img 
+                <Image 
                   src={trama.coverImage} 
                   alt={trama.name}
                   className="w-full h-32 object-cover rounded-md mb-3"

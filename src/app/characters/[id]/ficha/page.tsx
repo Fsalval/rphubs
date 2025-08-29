@@ -1,8 +1,7 @@
-// src/app/characters/[id]/ficha/page.tsx
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge'; // ✅ Importado
 import { usePublicCharacter } from '../layout';
 
 export default function PublicFichaPage() {

@@ -4,7 +4,7 @@
 import { useEffect, useState, createContext, useContext } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
-import { ref, onValue, get, set, remove } from 'firebase/database';
+import { ref, onValue, get } from 'firebase/database';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Search, Settings, Bell, Mail, Palette, Home } from 'lucide-react';
@@ -24,8 +24,8 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
   const characterId = Array.isArray(id) ? id[0] : id;
   const { theme, setTheme, availableThemes } = useTheme();
 
-  const [character, setCharacter] = useState<any>(null);
-  const [user, setUser] = useState<any>(null);
+  const [character, setCharacter] = useState<Character | null>(null);
+  const [user, setUser] = useState<Character | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -237,7 +237,7 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-80">
-                    <DropdownMenuLabel> Solicitudes de amistad</DropdownMenuLabel>
+                    <DropdownMenuLabel> solicitudes de amistad</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {notifications.length === 0 ? (
                       <DropdownMenuItem>No tienes solicitudes nuevas</DropdownMenuItem>

@@ -13,6 +13,7 @@ import { Edit, Save, X, Plus, ExternalLink, Globe, Users, UserX } from 'lucide-r
 import { useCharacter } from '../layout';
 import { db } from '@/lib/firebase';
 import { ref, update } from 'firebase/database';
+import Image from 'next/image';
 
 // Componente para selector de visibilidad
 const VisibilitySelector = ({ 

@@ -18,7 +18,7 @@ import { db } from '@/lib/firebase';
 export default function ConexionesPage() {
     const { character, isOwner, allCharacters } = useCharacter();
     const [connections, setConnections] = useState<any[]>([]);
-    const [selectedConnection, setSelectedConnection] = useState<any>(null);
+    const [selectedConnection, setSelectedConnection] = useState<Character | null>(null);
     const [loading, setLoading] = useState(true);
 
     // Estados para nuevo formulario
