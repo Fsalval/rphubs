@@ -88,6 +88,9 @@ export default function FeedPage() {
     setLoading(true);
     try {
       const allPosts: Post[] = [];
+    } catch (error) {
+      console.error('Error loading feed posts:', error);
+    }
 
       // Posts propios
       const ownPostsSnapshot = await get(ref(db, `characters/${character.id}/posts`));
