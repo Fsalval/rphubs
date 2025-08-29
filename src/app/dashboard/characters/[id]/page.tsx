@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ThumbsUp, Frown, Laugh, Heart } from 'lucide-react';
+import { MoreHorizontal, ThumbsUp, Frown, Laugh, Heart, Eye, Users } from 'lucide-react';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCharacter } from './layout';
 import { sanitize } from '@/lib/sanitize';
 import { ref, push, set , onValue } from 'firebase/database';
@@ -21,6 +22,7 @@ export default function CharacterProfilePage() {
   const [content, setContent] = useState('');
   const [editingPost, setEditingPost] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [postVisibility, setPostVisibility] = useState<'public' | 'friends'>('public');
 
   useEffect(() => {
     if (!character?.id) return;
@@ -66,7 +68,7 @@ export default function CharacterProfilePage() {
         avatarUrl: character.avatarUrl,
         time: new Date().toISOString(),
         content: cleanContent,
-        visibility: 'public',
+        visibility: postVisibility,
         likes: 0,
         hearts: 0,
         heartbreaks: 0,
@@ -95,6 +97,23 @@ export default function CharacterProfilePage() {
   // Eliminar post
   const handleDeletePost = (id: string) => {
     setPosts(posts.filter(p => p.id !== id));
+  };
+
+  // Función para cambiar visibilidad de un post
+  const handleChangePostVisibility = async (postId: string, newVisibility: 'public' | 'friends') => {
+    try {
+      const postRef = ref(db, `characters/${character.id}/posts/${postId}/visibility`);
+      await set(postRef, newVisibility);
+      
+      // Actualizar estado local
+      setPosts(posts.map(p => 
+        p.id === postId 
+          ? { ...p, visibility: newVisibility }
+          : p
+      ));
+    } catch (error) {
+      console.error('Error al cambiar visibilidad:', error);
+    }
   };
 
   // Función para manejar reacciones
@@ -197,7 +216,31 @@ export default function CharacterProfilePage() {
                     />
                   </div>
                 </CardHeader>
-                <div className="px-6 pb-6">
+                <div className="px-6 pb-6 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <Select value={postVisibility} onValueChange={(value: 'public' | 'friends') => setPostVisibility(value)}>
+                      <SelectTrigger className="w-32">
+                        <div className="flex items-center gap-2">
+                          {postVisibility === 'public' ? <Eye className="h-4 w-4" /> : <Users className="h-4 w-4" />}
+                          <span className="text-xs">{postVisibility === 'public' ? 'Público' : 'Amigos'}</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="public">
+                          <div className="flex items-center gap-2">
+                            <Eye className="h-4 w-4" />
+                            <span>Público</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="friends">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            <span>Amigos</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Button onClick={handlePost}>Publicar</Button>
                 </div>
               </Card>
@@ -219,6 +262,10 @@ export default function CharacterProfilePage() {
                             <p className="text-sm text-muted-foreground">{post.charHandle}</p>
                             <p className="text-sm text-muted-foreground">&middot;</p>
                             <p className="text-sm text-muted-foreground">{new Date(post.time).toLocaleString()}</p>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              {post.visibility === 'public' ? <Eye className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+                              <span>{post.visibility === 'public' ? 'Público' : 'Amigos'}</span>
+                            </div>
                           </div>
                           {editingPost === post.id ? (
                             <div className="space-y-2 mt-2">
@@ -242,6 +289,9 @@ export default function CharacterProfilePage() {
                             <DropdownMenuContent>
                               <DropdownMenuItem onClick={() => { setEditingPost(post.id); setEditContent(post.content); }}>
                                 Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleChangePostVisibility(post.id, post.visibility === 'public' ? 'friends' : 'public')}>
+                                {post.visibility === 'public' ? 'Hacer privado para amigos' : 'Hacer público'}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"

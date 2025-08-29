@@ -61,6 +61,7 @@ export default function FeedPage() {
   const [newPost, setNewPost] = useState('');
   const [postVisibility, setPostVisibility] = useState<'public' | 'friends' | 'private'>('friends');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterOptions>({
     searchTerm: '',
     postType: 'all',
@@ -291,6 +292,27 @@ export default function FeedPage() {
     return postTime.toLocaleDateString();
   };
 
+  // Función para cambiar visibilidad de post
+  const handleChangePostVisibility = async (postId: string, newVisibility: 'public' | 'friends' | 'private') => {
+    try {
+      const postRef = ref(db, `characters/${character.id}/posts/${postId}`);
+      await set(postRef, {
+        ...posts.find(p => p.id === postId),
+        visibility: newVisibility
+      });
+      
+      // Actualizar localmente
+      setPosts(prev => prev.map(post => 
+        post.id === postId ? { ...post, visibility: newVisibility } : post
+      ));
+      
+      setEditingPostId(null);
+    } catch (error) {
+      console.error('Error cambiando visibilidad:', error);
+      alert('Error al cambiar visibilidad');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -478,6 +500,18 @@ export default function FeedPage() {
                     <Badge variant={post.type === 'trama' ? 'default' : 'secondary'} className="text-xs">
                       {post.type === 'trama' ? 'Trama' : post.type === 'update' ? 'Actualización' : 'Post'}
                     </Badge>
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs ${
+                        post.visibility === 'public' ? 'text-blue-600' : 
+                        post.visibility === 'friends' ? 'text-green-600' : 
+                        'text-orange-600'
+                      }`}
+                    >
+                      {post.visibility === 'public' ? '🌍 Público' : 
+                       post.visibility === 'friends' ? '👥 Amigos' : 
+                       '🔒 Privado'}
+                    </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">{getTimeAgo(post.time)}</p>
                 </div>
@@ -488,6 +522,13 @@ export default function FeedPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {post.characterId === character.id && (
+                      <DropdownMenuItem 
+                        onClick={() => setEditingPostId(editingPostId === post.id ? null : post.id)}
+                      >
+                        Cambiar visibilidad
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem>Reportar</DropdownMenuItem>
                     <DropdownMenuItem>Ocultar</DropdownMenuItem>
                   </DropdownMenuContent>
@@ -506,6 +547,42 @@ export default function FeedPage() {
                         #{tag}
                       </Badge>
                     ))}
+                  </div>
+                )}
+
+                {/* Panel de cambio de visibilidad */}
+                {editingPostId === post.id && post.characterId === character.id && (
+                  <div className="bg-muted p-3 rounded-lg mb-4">
+                    <p className="text-sm font-medium mb-2">Cambiar visibilidad:</p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={post.visibility === 'public' ? 'default' : 'outline'}
+                        onClick={() => handleChangePostVisibility(post.id, 'public')}
+                        className="flex items-center gap-1"
+                      >
+                        <Globe className="h-3 w-3" />
+                        Público
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={post.visibility === 'friends' ? 'default' : 'outline'}
+                        onClick={() => handleChangePostVisibility(post.id, 'friends')}
+                        className="flex items-center gap-1"
+                      >
+                        <Users className="h-3 w-3" />
+                        Amigos
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={post.visibility === 'private' ? 'default' : 'outline'}
+                        onClick={() => handleChangePostVisibility(post.id, 'private')}
+                        className="flex items-center gap-1"
+                      >
+                        <MessageCircle className="h-3 w-3" />
+                        Privado
+                      </Button>
+                    </div>
                   </div>
                 )}
 

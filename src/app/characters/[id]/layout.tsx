@@ -169,13 +169,15 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
   };
 
   // Función para abrir chat de mensajes
-   // Abrir chat en el dashboard
   const handleStartMessage = () => {
     if (!currentUserCharacter || !characterId) return;
-    // Navega a tu dashboard y abre el chat
-    router.push(`/dashboard/characters/${currentUserCharacter.id}/messages?chat=${characterId}`);
+    // Buscar el componente FloatingChat y abrirlo
+    const event = new CustomEvent('openFloatingChat', { 
+      detail: { targetCharacterId: characterId } 
+    });
+    window.dispatchEvent(event);
   };
-  
+
   return (
     <PublicCharacterContext.Provider value={{ character, user, currentUserCharacter, isFriend: friendshipStatus === 'friends' }}>
       <div className="min-h-screen bg-secondary">

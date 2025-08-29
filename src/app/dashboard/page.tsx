@@ -26,7 +26,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
-  const [manifestoExpanded, setManifestoExpanded] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const router = useRouter();
 
   const manifesto = `🌟 Bienvenido a RPHubs - Tu espacio para el roleplay 🌟
@@ -94,11 +94,13 @@ En RPHubs creemos que el roleplay es un arte que trasciende fronteras. Aquí cad
   };
 
   const handleLogout = async () => {
+    setLoading(true); // Aunque ya no esté en pantalla, es buena práctica
     try {
       await signOut(auth);
       router.push('/login');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
+      setLoading(false);
     }
   };
 
@@ -121,7 +123,7 @@ En RPHubs creemos que el roleplay es un arte que trasciende fronteras. Aquí cad
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Rphubs</h1>
             <p className="text-gray-600">Bienvenido, {user?.email}</p>
           </div>
           <div className="flex gap-4">
@@ -140,35 +142,68 @@ En RPHubs creemos que el roleplay es un arte que trasciende fronteras. Aquí cad
         </div>
 
         {/* Manifiesto destacado */}
-        <div className="mb-8">
-          <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
-            <CardHeader 
-              className="cursor-pointer hover:bg-purple-50/50 transition-colors"
-              onClick={() => setManifestoExpanded(!manifestoExpanded)}
-            >
-              <CardTitle className="flex items-center justify-between text-purple-700">
-                <div className="flex items-center gap-2">
-                  <Heart className="h-5 w-5" />
-                  Manifiesto RPHubs ✨
-                </div>
-                {manifestoExpanded ? (
-                  <ChevronUp className="h-5 w-5" />
-                ) : (
-                  <ChevronDown className="h-5 w-5" />
-                )}
-              </CardTitle>
-            </CardHeader>
-            {manifestoExpanded && (
-              <CardContent>
-                <div className="prose prose-sm max-w-none">
-                  <div className="whitespace-pre-line text-sm leading-relaxed text-purple-800">
-                    {manifesto}
-                  </div>
-                </div>
-              </CardContent>
-            )}
-          </Card>
+
+    <div className="mb-8 cursor-pointer" onClick={() => setShowModal(true)}>
+      <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200 hover:shadow-lg transition-shadow">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-purple-700">
+            <Heart className="h-5 w-5" />
+            Manifiesto RPHubs ✨
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-purple-600">
+            Haz clic para leer nuestra visión y valores.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+      {/* Modal del Manifiesto */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div 
+            className="absolute inset-0"
+            onClick={() => setShowModal(false)}
+          ></div>
+          <div 
+            className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()} // Evita que se cierre al hacer clic dentro
+          >
+            {/* Header del modal */}
+            <div className="flex justify-between items-center border-b px-6 py-4 rounded-t-lg">
+              <h2 className="text-xl font-bold text-purple-700 flex items-center gap-2">
+                <Heart className="h-5 w-5" />
+                Manifiesto RPHubs ✨
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <span className="text-2xl">&times;</span>
+              </Button>
+            </div>
+
+            {/* Contenido scrolleable */}
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="prose prose-sm text-purple-800 whitespace-pre-line text-sm leading-relaxed">
+                {manifesto}
+              </div>
+            </div>
+
+            {/* Footer del modal */}
+            <div className="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg">
+              <Button 
+                onClick={() => setShowModal(false)}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
         </div>
+      )}
 
         {/* Tienda y Donativos */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

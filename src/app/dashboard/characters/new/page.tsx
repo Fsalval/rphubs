@@ -1,21 +1,23 @@
 // src/app/dashboard/characters/new/page.tsx
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ImageUpload } from '@/components/ui/image-upload';
 import { auth, db } from '@/lib/firebase';
 import { ref, push, get, set, update } from 'firebase/database'; // Añadido 'update'
 import DOMPurify from 'dompurify';
+
 
 export default function CreateCharacterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const characterId = searchParams.get('id');
+  const [isEditing, setIsEditing] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -26,6 +28,39 @@ export default function CreateCharacterPage() {
     pin: '',
     avatarUrl: '',
   });
+
+  useEffect(() => {
+    const loadCharacter = async () => {
+      if (!characterId) return;
+
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        const snapshot = await get(ref(db, `characters/${characterId}`));
+        const data = snapshot.val();
+
+        if (data && data.userId === user.uid) {
+          setFormData({
+            name: data.name || '',
+            username: data.username || '',
+            gender: data.gender || '',
+            nationality: data.nationality || '',
+            birthDate: data.birthDate || '',
+            pin: data.pin || '',
+            avatarUrl: data.avatarUrl || '',
+          });
+          setIsEditing(true);
+        } else {
+          setError('No tienes permiso para editar este personaje');
+        }
+      } catch (err) {
+        setError('Error al cargar el personaje');
+      }
+    };
+
+    loadCharacter();
+  }, [characterId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -48,7 +83,7 @@ export default function CreateCharacterPage() {
         return;
       }
 
-      // Validar edad mínima (15 años)
+      // Validar edad mínima
       const birth = new Date(formData.birthDate);
       const today = new Date();
       const age = today.getFullYear() - birth.getFullYear();
@@ -62,52 +97,81 @@ export default function CreateCharacterPage() {
         return;
       }
 
-      // Validar PIN (4-6 dígitos)
+      // Validar PIN
       if (!/^\d{4,6}$/.test(formData.pin)) {
         setError('El PIN debe ser un número de 4 a 6 dígitos.');
         setLoading(false);
         return;
       }
 
-      // Validar límite de 3 personajes
-      const snapshot = await get(ref(db, 'characters'));
-      const data = snapshot.val() || {};
-      const userCharacters = Object.values(data).filter((char: any) => char.userId === user.uid);
-      
-      if (userCharacters.length >= 3) {
-        setError('Solo puedes tener 3 personajes como máximo.');
-        setLoading(false);
-        return;
+      if (isEditing && characterId) {
+        // ✅ Actualizar personaje existente
+        const snapshot = await get(ref(db, `characters/${characterId}`));
+        const data = snapshot.val();
+
+        if (data.userId !== user.uid) {
+          setError('No puedes editar este personaje');
+          setLoading(false);
+          return;
+        }
+
+        // Validar que el username no lo use otro personaje
+        if (data.username !== formData.username) {
+          const allSnapshot = await get(ref(db, 'characters'));
+          const allData = allSnapshot.val() || {};
+          const usernames = Object.values(allData).map((c: any) => c.username);
+          if (usernames.includes(formData.username)) {
+            setError('Este nombre de usuario ya está en uso.');
+            setLoading(false);
+            return;
+          }
+        }
+
+        await update(ref(db, `characters/${characterId}`), {
+          ...formData,
+          id: characterId,
+          userId: user.uid,
+          avatarUrl: formData.avatarUrl || 'https://placehold.co/400x400.png',
+        });
+
+        router.push(`/dashboard/characters/${characterId}`);
+      } else {
+        // ✅ Crear nuevo personaje
+        const snapshot = await get(ref(db, 'characters'));
+        const data = snapshot.val() || {};
+        const userCharacters = Object.values(data).filter((char: any) => char.userId === user.uid);
+        
+        if (userCharacters.length >= 3) {
+          setError('Solo puedes tener 3 personajes como máximo.');
+          setLoading(false);
+          return;
+        }
+
+        const existingUsernames = Object.values(data).map((char: any) => char.username);
+        if (existingUsernames.includes(formData.username)) {
+          setError('Este nombre de usuario ya está en uso.');
+          setLoading(false);
+          return;
+        }
+
+        const newCharRef = push(ref(db, 'characters'));
+        const newCharId = newCharRef.key;
+
+        await set(newCharRef, {
+          id: newCharId,
+          ...formData,
+          userId: user.uid,
+          avatarUrl: formData.avatarUrl || 'https://placehold.co/400x400.png',
+          createdAt: new Date().toISOString(),
+          tags: [],
+        });
+
+        await update(ref(db, `users/${user.uid}`), {
+          activeCharacterId: newCharId,
+        });
+
+        router.push(`/dashboard/characters/${newCharId}`);
       }
-
-      // Validar username único
-      const existingUsernames = Object.values(data).map((char: any) => char.username);
-      if (existingUsernames.includes(formData.username)) {
-        setError('Este nombre de usuario ya está en uso.');
-        setLoading(false);
-        return;
-      }
-
-      // Crear personaje
-      const newCharRef = push(ref(db, 'characters'));
-      const newCharId = newCharRef.key;
-
-      await set(newCharRef, {
-        id: newCharId,
-        ...formData,
-        userId: user.uid,
-        avatarUrl: formData.avatarUrl || 'https://placehold.co/400x400.png',
-        createdAt: new Date().toISOString(),
-        tags: [],
-      });
-
-      // ✅ Guardar como personaje activo
-      await update(ref(db, `users/${user.uid}`), {
-        activeCharacterId: newCharId,
-      });
-
-      // Redirigir
-      router.push(`/dashboard/characters/${newCharId}`);
     } catch (err: any) {
       setError(err.message || 'Error desconocido');
     } finally {
@@ -201,37 +265,12 @@ export default function CreateCharacterPage() {
           </div>
         </div>
 
-        <div>
-          <Label>Foto de perfil</Label>
-          <div className="space-y-2">
-            <Input
-              type="url"
-              value={formData.avatarUrl}
-              onChange={handleChange}
-              name="avatarUrl"
-              placeholder="URL de la imagen (ej: https://ejemplo.com/imagen.jpg)"
-            />
-            <p className="text-sm text-gray-600">
-              Por ahora, usa un enlace directo a tu imagen. Próximamente habilitaremos la subida de archivos.
-            </p>
-            {formData.avatarUrl && (
-              <div className="mt-2">
-                <img 
-                  src={formData.avatarUrl} 
-                  alt="Vista previa" 
-                  className="w-20 h-20 rounded-full object-cover border"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
         <div className="flex gap-4 pt-6">
           <Button type="submit" disabled={loading}>
-            {loading ? 'Creando personaje...' : 'Crear Personaje'}
+            {loading 
+              ? (isEditing ? 'Guardando...' : 'Creando...') 
+              : (isEditing ? 'Guardar Cambios' : 'Crear Personaje')
+            }
           </Button>
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancelar

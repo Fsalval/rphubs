@@ -13,7 +13,7 @@ export default function HomePage() {
     // Siempre redirigir al login primero
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.push('/dashboard/characters');
+        router.push('/dashboard');
       } else {
         router.push('/login');
       }

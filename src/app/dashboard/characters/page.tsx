@@ -6,6 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { auth, db } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
+import { onAuthStateChanged } from 'firebase/auth';
 import { ref, onValue, remove, update } from 'firebase/database'; // Añadido 'update'
 import Link from 'next/link';
 import { Settings, Pencil, Download, Trash2, ArrowLeft } from 'lucide-react';
@@ -18,14 +20,30 @@ export default function CharactersPage() {
   const [showEnterPinModal, setShowEnterPinModal] = useState(false);
   const [enterCharacterId, setEnterCharacterId] = useState<string | null>(null);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [actionOnPin, setActionOnPin] = useState<'enter' | 'edit' | null>(null);
 
-  const user = auth.currentUser;
+  const [user, setUser] = useState<any>(null); 
+  const router = useRouter();
   const maxCharacters = 3; // Límite correcto de 3 personajes
   const hasMaxCharacters = characters.length >= maxCharacters;
 
-  useEffect(() => {
+    useEffect(() => {
+      const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        if (currentUser) {
+          setUser(currentUser);
+        } else {
+          // Si no hay usuario, redirigir
+          window.location.href = '/login';
+        }
+      });
+
+      return () => unsubscribe();
+    }, []);
+
+      useEffect(() => {
     if (!user) return;
-    const charactersRef = ref(db, `characters`);
+
+    const charactersRef = ref(db, 'characters');
     const unsubscribe = onValue(charactersRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -37,8 +55,9 @@ export default function CharactersPage() {
         setCharacters([]);
       }
     });
+
     return () => unsubscribe();
-  }, [user]);
+  }, [user]); // <-- Se ejecuta cuando user cambia
 
   const handleDeleteClick = (id: string) => {
     setDeleteId(id);
@@ -115,8 +134,15 @@ export default function CharactersPage() {
     setShowEnterPinModal(false);
     setEnterCharacterId(null);
     setPinInput('');
-    
-    await enterCharacter(enterCharacterId);
+
+    // ✅ Ahora `router` está definido
+    if (actionOnPin === 'edit') {
+      router.push(`/dashboard/characters/new?id=${enterCharacterId}`);
+    } else if (actionOnPin === 'enter') {
+      await enterCharacter(enterCharacterId);
+    }
+
+    setActionOnPin(null);
   };
 
   return (
@@ -164,7 +190,12 @@ export default function CharactersPage() {
                   <Button 
                     asChild={false} 
                     className="flex-1" 
-                    onClick={() => handleEnterCharacter(char.id)}
+                    onClick={() => {
+                      setEnterCharacterId(char.id);
+                      setActionOnPin('enter');
+                      setPinInput('');
+                      setShowEnterPinModal(true);
+                    }}
                   >
                     Entrar como Personaje
                   </Button>
@@ -180,13 +211,18 @@ export default function CharactersPage() {
                     {openMenus[char.id] && (
                       <div className="absolute right-0 mt-2 w-48 bg-background border border-border rounded-md shadow-lg z-50">
                         <div className="py-1">
-                          <Link
-                            href={`/dashboard/characters/${char.id}/edit`}
+                          <div
                             className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted cursor-pointer"
-                            onClick={() => setOpenMenus({})}
+                            onClick={() => {
+                              setEnterCharacterId(char.id);
+                              setActionOnPin('edit');
+                              setPinInput('');
+                              setShowEnterPinModal(true);
+                              setOpenMenus({});
+                            }}
                           >
                             <Pencil className="mr-2 h-4 w-4" /> Editar
-                          </Link>
+                          </div>
                           <div
                             className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted cursor-pointer"
                             onClick={() => setOpenMenus({})}

@@ -44,6 +44,21 @@ export default function FloatingChat() {
   const [unreadTotal, setUnreadTotal] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Escuchar evento para abrir chat específico
+  useEffect(() => {
+    const handleOpenChat = (event: any) => {
+      const { targetCharacterId } = event.detail;
+      if (targetCharacterId) {
+        handleStartChat(targetCharacterId);
+        setIsOpen(true);
+        setIsMinimized(false);
+      }
+    };
+
+    window.addEventListener('openFloatingChat', handleOpenChat);
+    return () => window.removeEventListener('openFloatingChat', handleOpenChat);
+  }, []);
+
   // Cargar chats
   useEffect(() => {
     if (!character) return;
