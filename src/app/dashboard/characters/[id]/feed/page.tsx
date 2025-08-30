@@ -15,15 +15,18 @@ import { ref, get, push, set, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
 interface Post {
+  // Propiedades requeridas
   id: string;
   content: string;
   time: string;
   visibility: 'public' | 'friends' | 'private';
   characterName: string;
   characterUsername: string;
-  characterAvatar?: string;
   characterId: string;
   type: 'post' | 'trama' | 'update';
+  
+  // Propiedades opcionales
+  characterAvatar?: string;
   tags?: string[];
   reactions?: { [userId: string]: string };
   comments?: number;
@@ -77,7 +80,7 @@ export default function FeedPage() {
     if (character?.id) {
       loadFeedPosts();
     }
-  }, [character, friends, allCharacters]);
+  }, [character, friends, allCharacters]); // aquí falta loadFeedPosts como dependencia
 
   // Aplicar filtros cuando cambien posts o filtros
   useEffect(() => {
