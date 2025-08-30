@@ -147,17 +147,16 @@ export default function FeedPage() {
             }
           });
         }
-      } // ✅ Cierre del for (dentro del try)
-      // Ordenar por fecha (más reciente primero)
-      allPosts.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+      } 
+      
+    allPosts.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
       setPosts(allPosts);
-    } catch (error) {
+    }catch(error) {
       console.error('Error loading feed posts:', error);
-    } finally {
+    }finally{
       setLoading(false);
     }
   };
-
   const applyFilters = () => {
     let filtered = [...posts];
     if (filters.searchTerm) {
@@ -177,11 +176,11 @@ export default function FeedPage() {
         case 'today': filterDate.setHours(0, 0, 0, 0); break;
         case 'week': filterDate.setDate(now.getDate() - 7); break;
         case 'month': filterDate.setMonth(now.getMonth() - 1); break;
-      }
+      };
       filtered = filtered.filter(post => new Date(post.time) >= filterDate);
     }
     setFilteredPosts(filtered);
-  };
+  }
 
   const handleSubmitPost = async () => {
     if (!character?.id || !newPost.trim()) return;
