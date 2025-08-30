@@ -6,6 +6,7 @@ export interface Character {
   username: string;
   avatarUrl: string;
   bio?: string;
+  nationality?: string; 
   birthDate?: string;
   gender?: string;
   createdAt: string;
