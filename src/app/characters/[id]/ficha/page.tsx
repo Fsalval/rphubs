@@ -1,12 +1,13 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge'; // ✅ Importado
+import { Badge } from '@/components/ui/badge';
 import { usePublicCharacter } from '../layout';
 
 export default function PublicFichaPage() {
   const { character, isFriend } = usePublicCharacter();
 
+  // Calcular edad a partir de birthDate
   const age = character?.birthDate
     ? Math.floor((new Date().getTime() - new Date(character.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
     : null;
@@ -34,7 +35,9 @@ export default function PublicFichaPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Edad</p>
-              <p className="text-base">{age !== null ? `${age} años` : character.age || 'No definida'}</p>
+              <p className="text-base">
+                {age !== null ? `${age} años` : 'No definida'}
+              </p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Género</p>
