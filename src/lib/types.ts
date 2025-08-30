@@ -5,13 +5,20 @@ export interface Character {
   name: string;
   username: string;
   avatarUrl: string;
-  bio?: string;
-  nationality?: string; 
+  biography?: string;        // ← mejor que `bio`
+  profile?: string;          // biografía completa
+  nationality?: string;
   birthDate?: string;
   gender?: string;
+  mbti?: string;
   createdAt: string;
+  tags?: string[];
+  personalidad?: string;     // ← ahora sí, reconocida
+  trama?: string;            // trama principal
   friends?: Record<string, true>;
   userId: string;
+  pin: string;               // si lo usas en auth
+  usernameLowerCase?: string; // útil para búsquedas
 }
 
 export interface Post {
