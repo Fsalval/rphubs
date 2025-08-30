@@ -19,6 +19,12 @@ export interface Character {
   userId: string;
   pin: string;               // si lo usas en auth
   usernameLowerCase?: string; // útil para búsquedas
+  // 🔹 Campos adicionales que usas en el frontend
+  socialLinks?: {
+    name: string;
+    url: string;
+    username?: string;
+  }[];
 }
 
 export interface Post {
