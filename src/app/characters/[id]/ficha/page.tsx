@@ -47,10 +47,6 @@ export default function PublicFichaPage() {
               <p className="text-sm font-medium text-muted-foreground">Nacionalidad</p>
               <p className="text-base">{character.nationality || 'No definida'}</p>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">MBTI</p>
-              <p className="text-base">{character.mbti || 'No definido'}</p>
-            </div>
           </div>
         </CardContent>
       </Card>
