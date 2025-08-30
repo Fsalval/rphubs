@@ -80,7 +80,7 @@ export default function PublicFichaPage() {
       )}
 
       {/* Etiquetas - PÚBLICO */}
-      {character.tags && character.tags.length > 0 && (
+      {Array.isArray(character.tags) && character.tags.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Etiquetas</CardTitle>
