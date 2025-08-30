@@ -51,17 +51,10 @@ export default function FeedPage() {
   const [postVisibility, setPostVisibility] = useState<'public' | 'friends' | 'private'>('friends');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FilterOptions>({
-    searchTerm: '',
-    postType: 'all',
-    timeFilter: 'all',
-    friendsOnly: true
-  });
-
+  const [filters, setFilters] = useState<FilterOptions>({searchTerm: '', postType: 'all', timeFilter: 'all', friendsOnly: true });
   // Obtener amigos
   useEffect(() => {
     if (!character?.id) return;
-
     const friendsRef = ref(db, `characters/${character.id}/friends`);
     const unsubscribe = onValue(friendsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -90,7 +83,8 @@ export default function FeedPage() {
   const loadFeedPosts = async () => {
     setLoading(true);
     try {
-      const allPosts: Post[] = [];     
+      const allPosts: Post[] = [];
+
       // Posts propios
       const ownPostsSnapshot = await get(ref(db, `characters/${character.id}/posts`));
       if (ownPostsSnapshot.exists()) {
@@ -107,15 +101,13 @@ export default function FeedPage() {
           });
         });
       }
-
       // Posts y tramas de amigos
       for (const friendId of friends) {
         const friendCharacter = allCharacters.find(c => c.id === friendId);
         if (!friendCharacter) continue;
-
         // Posts del amigo
         const postsRef = ref(db, `characters/${friendId}/posts`);
-        const postsSnapshot = await get(postsRef);        
+        const postsSnapshot = await get(postsRef);
         if (postsSnapshot.exists()) {
           const postsData = postsSnapshot.val();
           Object.entries(postsData).forEach(([postId, post]: [string, any]) => {
@@ -132,7 +124,6 @@ export default function FeedPage() {
             }
           });
         }
-
         // Tramas del amigo
         const tramasRef = ref(db, `characters/${friendId}/tramas`);
         const tramasSnapshot = await get(tramasRef);
@@ -140,7 +131,7 @@ export default function FeedPage() {
           const tramasData = tramasSnapshot.val();
           Object.entries(tramasData).forEach(([tramaId, trama]: [string, any]) => {
             if (trama.visibility === 'public' || 
-                (trama.visibility === 'friends' && friends.includes(friendId))) {
+                (trama.visibility === 'friends' && friends.includes(character.id))) { // ← Revisa esta lógica
               allPosts.push({
                 id: `trama-${tramaId}`,
                 content: `Nueva trama: "${trama.name}"\n${trama.content || ''}`,
@@ -156,8 +147,8 @@ export default function FeedPage() {
             }
           });
         }
-      }
-      // Ordenar por fecha
+      } // ✅ Cierre del for (dentro del try)
+      // Ordenar por fecha (más reciente primero)
       allPosts.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
       setPosts(allPosts);
     } catch (error) {
@@ -189,7 +180,6 @@ export default function FeedPage() {
       }
       filtered = filtered.filter(post => new Date(post.time) >= filterDate);
     }
-
     setFilteredPosts(filtered);
   };
 
