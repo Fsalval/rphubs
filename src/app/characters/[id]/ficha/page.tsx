@@ -51,18 +51,6 @@ export default function PublicFichaPage() {
         </CardContent>
       </Card>
 
-      {/* Biografía */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Biografía</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-base leading-relaxed whitespace-pre-line">
-            {character.profile || 'No hay biografía definida.'}
-          </p>
-        </CardContent>
-      </Card>
-
       {/* Personalidad - SOLO PARA AMIGOS */}
       {isFriend && character.personalidad && (
         <Card>
