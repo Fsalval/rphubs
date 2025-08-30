@@ -1,5 +1,5 @@
 'use client';
-
+{/*# RPHubs - Actualizado: 30 ago 2025 (fuerza de build)*/}
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { usePublicCharacter } from '../layout';
