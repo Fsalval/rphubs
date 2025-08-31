@@ -80,7 +80,7 @@ export default function PublicCharacterPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {Array.isArray(character.socialLinks) && character.socialLinks.length > 0 ? (
-                character.socialLinks.map((link: SocialLink, i: number) => (
+                character.socialLinks.map((link, i) => (
                   <div key={i}>
                     <p className="text-sm text-muted-foreground">{link.name}</p>
                     <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline block text-sm">
