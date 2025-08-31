@@ -8,6 +8,7 @@ import { ThumbsUp, Heart, Frown, Laugh, Calendar } from 'lucide-react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { usePublicCharacter } from './layout';
+import { Character } from '@/lib/types';
 
 export default function PublicCharacterPage() {
   const { character, isFriend } = usePublicCharacter();
