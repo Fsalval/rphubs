@@ -12,7 +12,7 @@ import { Send, MessageSquare, X, Minus } from 'lucide-react';
 import { ref, onValue, push, serverTimestamp, get, off } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCharacter } from '../layout';
-import { Character } from '@/lib/types'; // ✅ Importa el tipo
+import { Character } from '@/lib/types';
 
 interface Message {
   id: string;
