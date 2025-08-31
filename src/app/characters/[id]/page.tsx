@@ -79,7 +79,7 @@ export default function PublicCharacterPage() {
               <CardTitle>Enlaces</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {character.socialLinks?.length > 0 ? (
+              {Array.isArray(character.socialLinks) && character.socialLinks.length > 0 ? (
                 character.socialLinks.map((link: SocialLink, i: number) => (
                   <div key={i}>
                     <p className="text-sm text-muted-foreground">{link.name}</p>
