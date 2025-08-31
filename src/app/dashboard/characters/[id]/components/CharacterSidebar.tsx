@@ -3,7 +3,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Character } from '@/lib/types'; // ✅ Importa el tipo
+import { Character } from '@/lib/types';
 
 export function CharacterSidebar({ character }: { character: Character }) {
   return (
@@ -31,7 +31,7 @@ export function CharacterSidebar({ character }: { character: Character }) {
           <CardTitle>Enlaces</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {character.socialLinks?.length > 0 ? (
+          {Array.isArray(character.socialLinks) && character.socialLinks.length > 0 ? (
             character.socialLinks.map((link, i) => (
               <div key={i}>
                 <p className="text-sm text-muted-foreground">{link.name}</p>
