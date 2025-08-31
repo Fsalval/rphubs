@@ -65,7 +65,7 @@ export default function AmigosPage() {
             const friendData = friendSnapshot.val();
             const age = friendData.birthDate 
               ? Math.floor((new Date().getTime() - new Date(friendData.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-              : null;
+              : undefined;
             
             friendsList.push({
               id: friendId,
