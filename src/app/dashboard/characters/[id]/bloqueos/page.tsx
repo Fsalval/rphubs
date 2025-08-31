@@ -64,7 +64,7 @@ export default function MisBloqueos() {
       await update(ref(db, `characters/${character.id}/blockedCharacters`), {[blockedCharacterId]: null});
       
       // Remover de los bloqueadores del otro personaje
-      await update(ref(db, `characters/${blockedCharacterId}/blockedBy/${character.id}`), null);
+      await update(ref(db, `characters/${blockedCharacterId}/blockedBy`), {[character.id]: null});
       
       // Actualizar lista local
       setBlockedCharacters(prev => prev.filter(c => c.id !== blockedCharacterId));
