@@ -29,9 +29,7 @@ interface Chat {
   participantAvatars: { [key: string]: string };
   participantUsernames: { [key: string]: string };
   lastMessage: string;
-  lastMessageTime: number;
-  unreadCount: { [key: string]: number };
-}
+  lastMessageTime: number;//kkk
 
 export default function FloatingChat() {
   // ✅ Tipado explícito del hook
