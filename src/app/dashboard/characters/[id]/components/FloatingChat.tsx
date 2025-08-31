@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Send, MessageSquare, X, Minus, Users } from 'lucide-react';
+import { Send, MessageSquare, X, Minus } from 'lucide-react';
 import { ref, onValue, push, serverTimestamp, get, off } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCharacter } from '../layout';
+import { Character } from '@/lib/types'; // ✅ Importa el tipo
 
 interface Message {
   id: string;
@@ -33,8 +34,12 @@ interface Chat {
 }
 
 export default function FloatingChat() {
-  const { character, allCharacters } = useCharacter();
-  
+  // ✅ Tipado explícito del hook
+  const { character, allCharacters } = useCharacter() as {
+    character: Character | null;
+    allCharacters: Character[];
+  };
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [chats, setChats] = useState<Chat[]>([]);
@@ -49,7 +54,14 @@ export default function FloatingChat() {
     const handleOpenChat = (event: any) => {
       const { targetCharacterId } = event.detail;
       if (targetCharacterId) {
-        handleStartChat(targetCharacterId);
+        // Busca el chat existente o crea uno nuevo
+        const existingChat = chats.find(chat => chat.participants.includes(targetCharacterId));
+        if (existingChat) {
+          setSelectedChat(existingChat);
+        } else {
+          // Si no existe, podrías iniciar uno nuevo
+          console.log('Iniciar chat con:', targetCharacterId);
+        }
         setIsOpen(true);
         setIsMinimized(false);
       }
@@ -57,12 +69,12 @@ export default function FloatingChat() {
 
     window.addEventListener('openFloatingChat', handleOpenChat);
     return () => window.removeEventListener('openFloatingChat', handleOpenChat);
-  }, []);
+  }, [chats]);
 
   // Cargar chats
   useEffect(() => {
-    if (!character) return;
-    
+    if (!character?.id) return;
+
     const chatsRef = ref(db, `chats`);
     const unsubscribe = onValue(chatsRef, (snapshot) => {
       const chatsData = snapshot.val();
@@ -71,12 +83,12 @@ export default function FloatingChat() {
           .filter(([_, chat]: any) => chat.participants?.includes(character.id))
           .map(([id, chat]: any) => ({
             id,
-            ...chat
+            ...chat,
           }))
           .sort((a: any, b: any) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
-        
+
         setChats(userChats);
-        
+
         // Calcular total de mensajes no leídos
         const totalUnread = userChats.reduce((total: number, chat: any) => {
           return total + (chat.unreadCount?.[character.id] || 0);
@@ -96,10 +108,12 @@ export default function FloatingChat() {
     const unsubscribe = onValue(messagesRef, (snapshot) => {
       const messagesData = snapshot.val();
       if (messagesData) {
-        const messagesList = Object.entries(messagesData).map(([id, message]: any) => ({
-          id,
-          ...message
-        })).sort((a: any, b: any) => a.timestamp - b.timestamp);
+        const messagesList = Object.entries(messagesData)
+          .map(([id, message]: any) => ({
+            id,
+            ...message,
+          }))
+          .sort((a: any, b: any) => a.timestamp - b.timestamp);
         setMessages(messagesList);
       } else {
         setMessages([]);
@@ -119,24 +133,24 @@ export default function FloatingChat() {
 
     const messagesRef = ref(db, `chatMessages/${selectedChat.id}`);
     const chatRef = ref(db, `chats/${selectedChat.id}`);
-    
+
     const messageData = {
       senderId: character.id,
       content: newMessage.trim(),
       timestamp: serverTimestamp(),
-      read: false
+      read: false,
     };
 
     try {
       await push(messagesRef, messageData);
-      
+
       // Actualizar info del chat
-      const otherParticipantId = selectedChat.participants.find(p => p !== character.id);
+      const otherParticipantId = selectedChat.participants.find((p) => p !== character.id);
       if (otherParticipantId) {
         await push(chatRef, {
           lastMessage: newMessage.trim(),
           lastMessageTime: Date.now(),
-          [`unreadCount/${otherParticipantId}`]: (selectedChat.unreadCount?.[otherParticipantId] || 0) + 1
+          [`unreadCount/${otherParticipantId}`]: (selectedChat.unreadCount?.[otherParticipantId] || 0) + 1,
         });
       }
 
@@ -147,19 +161,19 @@ export default function FloatingChat() {
   };
 
   const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString('es-ES', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(timestamp).toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
   const getOtherParticipantName = (chat: Chat) => {
-    const otherParticipant = chat.participants.find(p => p !== character?.id);
+    const otherParticipant = chat.participants.find((p) => p !== character?.id);
     return chat.participantNames?.[otherParticipant || ''] || 'Usuario desconocido';
   };
 
   const getOtherParticipantAvatar = (chat: Chat) => {
-    const otherParticipant = chat.participants.find(p => p !== character?.id);
+    const otherParticipant = chat.participants.find((p) => p !== character?.id);
     return chat.participantAvatars?.[otherParticipant || ''] || '';
   };
 
@@ -177,8 +191,8 @@ export default function FloatingChat() {
           >
             <MessageSquare className="h-6 w-6" />
             {unreadTotal > 0 && (
-              <Badge 
-                variant="destructive" 
+              <Badge
+                variant="destructive"
                 className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs"
               >
                 {unreadTotal > 99 ? '99+' : unreadTotal}
@@ -191,9 +205,7 @@ export default function FloatingChat() {
       {/* Ventana de chat */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-50">
-          <Card className={`w-80 shadow-xl transition-all duration-200 ${
-            isMinimized ? 'h-14' : 'h-96'
-          }`}>
+          <Card className={`w-80 shadow-xl transition-all duration-200 ${isMinimized ? 'h-14' : 'h-96'}`}>
             <CardHeader className="p-3 border-b">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm">
@@ -240,14 +252,10 @@ export default function FloatingChat() {
                           >
                             <Avatar className="h-10 w-10">
                               <AvatarImage src={getOtherParticipantAvatar(chat)} />
-                              <AvatarFallback>
-                                {getOtherParticipantName(chat).charAt(0)}
-                              </AvatarFallback>
+                              <AvatarFallback>{getOtherParticipantName(chat).charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {getOtherParticipantName(chat)}
-                              </p>
+                              <p className="text-sm font-medium truncate">{getOtherParticipantName(chat)}</p>
                               <p className="text-xs text-muted-foreground truncate">
                                 {chat.lastMessage || 'Sin mensajes'}
                               </p>
@@ -266,12 +274,7 @@ export default function FloatingChat() {
                   /* Vista de mensajes */
                   <>
                     <div className="p-2 border-b">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedChat(null)}
-                        className="text-xs"
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedChat(null)} className="text-xs">
                         ← Volver a chats
                       </Button>
                     </div>
@@ -279,12 +282,7 @@ export default function FloatingChat() {
                     <ScrollArea className="flex-1 p-3">
                       <div className="space-y-3">
                         {messages.map((message) => (
-                          <div
-                            key={message.id}
-                            className={`flex ${
-                              message.senderId === character.id ? 'justify-end' : 'justify-start'
-                            }`}
-                          >
+                          <div key={message.id} className={`flex ${message.senderId === character.id ? 'justify-end' : 'justify-start'}`}>
                             <div
                               className={`max-w-[70%] rounded-lg p-2 text-sm ${
                                 message.senderId === character.id
@@ -293,9 +291,7 @@ export default function FloatingChat() {
                               }`}
                             >
                               <p>{message.content}</p>
-                              <p className={`text-xs mt-1 opacity-70`}>
-                                {formatTime(message.timestamp)}
-                              </p>
+                              <p className="text-xs mt-1 opacity-70">{formatTime(message.timestamp)}</p>
                             </div>
                           </div>
                         ))}
