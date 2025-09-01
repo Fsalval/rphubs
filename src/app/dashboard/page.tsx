@@ -57,7 +57,7 @@ En RPHubs creemos que el roleplay es un arte que trasciende fronteras. Aquí cad
 
 Únete a nuestra comunidad y descubre el potencial infinito de tu imaginación. En RPHubs, tu historia comienza aquí.
 
-¡Que comience la aventura! 🚀`;
+¡Que comience la aventura! `;
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
