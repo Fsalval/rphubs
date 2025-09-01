@@ -29,15 +29,14 @@ interface Chat {
   participantAvatars: { [key: string]: string };
   participantUsernames: { [key: string]: string };
   lastMessage: string;
-  lastMessageTime: number;//kkk
+  lastMessageTime: number;
+}
 
 export default function FloatingChat() {
-  // ✅ Tipado explícito del hook
   const { character, allCharacters } = useCharacter() as {
     character: Character | null;
     allCharacters: Character[];
   };
-
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [chats, setChats] = useState<Chat[]>([]);
