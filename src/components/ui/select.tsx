@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState } from 'react';
 
 const SelectContext = createContext<{
-  value: string;
+  value: string | undefined;
   onValueChange: (value: string) => void;
 } | null>(null);
 

@@ -40,11 +40,13 @@ const DropdownMenuTrigger = ({ children, asChild = false }: { children: React.Re
 
   const clone = asChild && React.isValidElement(children)
     ? React.cloneElement(children, {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onClick: (e: React.MouseEvent) => {
           setOpen(!open);
-          children.props.onClick?.(e);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (children.props as any).onClick?.(e);
         },
-      })
+      } as any)
     : null;
 
   return asChild ? (

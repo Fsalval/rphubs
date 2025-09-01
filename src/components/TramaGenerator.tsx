@@ -293,20 +293,21 @@ export default function TramaGenerator() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="templates" className="space-y-6">
+        <TabsContent value="templates">
           {/* Selección de plantillas */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {tramaTemplates.map((template) => {
               const IconComponent = template.icon;
               return (
-                <Card 
+                <div 
                   key={template.id}
-                  className={`cursor-pointer transition-all hover:shadow-lg ${
-                    selectedTemplate?.id === template.id ? 'ring-2 ring-purple-500' : ''
-                  }`}
+                  className="cursor-pointer transition-all hover:shadow-lg"
                   onClick={() => handleTemplateSelect(template)}
                 >
-                  <CardHeader className="pb-3">
+                  <Card className={`${
+                    selectedTemplate?.id === template.id ? 'ring-2 ring-purple-500' : ''
+                  }`}>
+                    <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
                       <IconComponent className="h-5 w-5 text-purple-500" />
                       <CardTitle className="text-lg">{template.name}</CardTitle>
@@ -325,6 +326,7 @@ export default function TramaGenerator() {
                     </div>
                   </CardContent>
                 </Card>
+                </div>
               );
             })}
           </div>
@@ -378,7 +380,7 @@ export default function TramaGenerator() {
           )}
         </TabsContent>
 
-        <TabsContent value="prompt" className="space-y-6">
+        <TabsContent value="prompt">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

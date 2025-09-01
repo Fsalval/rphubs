@@ -2,12 +2,13 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Image from 'next/image';
 import { Button } from './button';
 import { Card, CardContent } from './card';
 import { Avatar, AvatarImage, AvatarFallback } from './avatar';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
-import { uploadImage, resizeImage, validateImageFile } from '@/lib/imageUpload';
-import { auth } from '@/lib/firebase';
+import { uploadImage } from '@/lib/cloudinary';
+import { resizeImage, validateImageFile } from '@/lib/imageUpload';
 
 interface ImageUploadProps {
   value?: string;
@@ -23,7 +24,7 @@ interface ImageUploadProps {
 export function ImageUpload({
   value,
   onChange,
-  folder = 'characters',
+  folder = 'characters', // eslint-disable-line @typescript-eslint/no-unused-vars
   maxWidth = 800,
   maxHeight = 600,
   variant = 'default',
@@ -50,9 +51,8 @@ export function ImageUpload({
       // Redimensionar imagen si es necesario
       const resizedFile = await resizeImage(file, maxWidth, maxHeight);
       
-      // Subir imagen
-      const userId = auth.currentUser?.uid;
-      const imageUrl = await uploadImage(resizedFile, folder, userId);
+      // Subir imagen a Cloudinary
+      const imageUrl = await uploadImage(resizedFile);
       
       onChange(imageUrl);
     } catch (err) {
@@ -189,6 +189,8 @@ export function ImageUpload({
                 <Image 
                   src={value} 
                   alt="Preview" 
+                  width={400}
+                  height={192}
                   className="w-full h-48 object-cover rounded-lg"
                 />
                 <Button

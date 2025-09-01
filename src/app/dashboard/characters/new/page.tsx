@@ -1,7 +1,7 @@
 // src/app/dashboard/characters/new/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { ref, push, get, set, update } from 'firebase/database'; // Añadido 'up
 import DOMPurify from 'dompurify';
 
 
-export default function CreateCharacterPage() {
+function CreateCharacterContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -278,5 +278,13 @@ export default function CreateCharacterPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function CreateCharacterPage() {
+  return (
+    <Suspense fallback={<div>Cargando...</div>}>
+      <CreateCharacterContent />
+    </Suspense>
   );
 }

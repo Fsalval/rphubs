@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { useCharacter } from '../../layout';
 import { ref, onValue, push, update } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import { Character, Story } from '@/lib/types';
 import { sanitize } from '@/lib/sanitize';
 import Link from 'next/link';
 
@@ -20,7 +21,7 @@ export default function TramaDetailPage() {
   const { id, tramaId } = useParams();
   const { character, isOwner } = useCharacter();
   
-  const [trama, setTrama] = useState<Character | null>(null);
+  const [trama, setTrama] = useState<Story | null>(null);
   const [chapters, setChapters] = useState<any[]>([]);
   const [showNewChapter, setShowNewChapter] = useState(false);
   const [newChapterTitle, setNewChapterTitle] = useState('');

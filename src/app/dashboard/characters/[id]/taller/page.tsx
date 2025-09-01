@@ -138,7 +138,7 @@ export default function TallerEscrituraPage() {
           <h1 className="text-3xl font-bold">Taller de Escritura</h1>
           <p className="text-muted-foreground">Crea y edita borradores antes de publicarlos como tramas</p>
         </div>
-        <Button onClick={() => setNuevoBorrador(true)} disabled={nuevoBorrador || editandoBorrador}>
+        <Button onClick={() => setNuevoBorrador(true)} disabled={nuevoBorrador || !!editandoBorrador}>
           <Plus className="h-4 w-4 mr-2" />
           Nuevo Borrador
         </Button>

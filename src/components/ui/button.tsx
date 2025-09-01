@@ -39,7 +39,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         <Comp
           className={classes}
           role="button"
-          onClick={props.onClick}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onClick={props.onClick as any}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ref={ref as any}
         >
           {props.children}

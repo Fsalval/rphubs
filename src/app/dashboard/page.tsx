@@ -6,11 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Plus, User, Settings, Trash2, Heart, ChevronDown, ChevronUp, Store, Gift } from 'lucide-react';
+import { Plus, User as UserIcon, Settings, Trash2, Heart, ChevronDown, ChevronUp, Store, Gift } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { ref, onValue, off } from 'firebase/database';
-import { signOut } from 'firebase/auth';
-import { onAuthStateChanged } from 'firebase/auth';
+import { signOut, onAuthStateChanged, type User } from 'firebase/auth';
 
 interface Character {
   id: string;
@@ -23,7 +22,7 @@ interface Character {
 }
 
 export default function Dashboard() {
-  const [user, setUser] = useState<Character | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -177,7 +176,7 @@ En RPHubs creemos que el roleplay es un arte que trasciende fronteras. Aquí cad
               </h2>
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => setShowModal(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
@@ -252,7 +251,7 @@ En RPHubs creemos que el roleplay es un arte que trasciende fronteras. Aquí cad
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
+                    <UserIcon className="h-5 w-5" />
                     Mis Personajes
                   </CardTitle>
                   <Badge variant="secondary" className="text-lg px-3 py-1">
@@ -271,7 +270,7 @@ En RPHubs creemos que el roleplay es un arte que trasciende fronteras. Aquí cad
                 </p>
                 <div className="flex items-center gap-2 text-sm text-purple-600">
                   <span>Ir a Personajes</span>
-                  <User className="h-4 w-4" />
+                  <UserIcon className="h-4 w-4" />
                 </div>
               </CardContent>
             </Card>

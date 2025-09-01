@@ -11,6 +11,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { ref, onValue, remove, update } from 'firebase/database'; // Añadido 'update'
 import Link from 'next/link';
 import { Settings, Pencil, Download, Trash2, ArrowLeft } from 'lucide-react';
+import { Character } from '@/lib/types';
+import { User } from 'firebase/auth';
 
 export default function CharactersPage() {
   const [characters, setCharacters] = useState<any[]>([]);
@@ -22,7 +24,7 @@ export default function CharactersPage() {
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
   const [actionOnPin, setActionOnPin] = useState<'enter' | 'edit' | null>(null);
 
-  const [user, setUser] = useState<Character | null>(null); 
+  const [user, setUser] = useState<User | null>(null); 
   const router = useRouter();
   const maxCharacters = 3; // Límite correcto de 3 personajes
   const hasMaxCharacters = characters.length >= maxCharacters;

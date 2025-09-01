@@ -186,12 +186,13 @@ export default function TramaLecturaPage() {
           <ScrollArea className="h-96">
             <div className="space-y-2">
               {trama.chapters.map((chapter, index) => (
-                <Card 
+                <div 
                   key={chapter.id}
-                  className={`cursor-pointer transition-colors ${currentChapter === index ? 'bg-primary/10 border-primary' : 'hover:bg-muted'}`}
+                  className="cursor-pointer transition-colors"
                   onClick={() => setCurrentChapter(index)}
                 >
-                  <CardContent className="p-3">
+                  <Card className={`${currentChapter === index ? 'bg-primary/10 border-primary' : 'hover:bg-muted'}`}>
+                    <CardContent className="p-3">
                     <div className="flex items-start gap-3">
                       <div className="text-xs font-bold text-muted-foreground min-w-[2rem]">
                         {String(index + 1).padStart(2, '0')}
@@ -221,6 +222,7 @@ export default function TramaLecturaPage() {
                     </div>
                   </CardContent>
                 </Card>
+                </div>
               ))}
             </div>
           </ScrollArea>

@@ -32,8 +32,8 @@ const SimpleTabs = ({ defaultValue, children }: SimpleTabsProps) => {
           if (!React.isValidElement(child)) return null;
           if (child.type === SimpleTabs.Trigger) {
             return React.cloneElement(child, {
-              onClick: () => setActiveTab(child.props.value),
-            });
+              onClick: () => setActiveTab((child.props as { value: string }).value),
+            } as any);
           }
           return null;
         })}
@@ -43,8 +43,9 @@ const SimpleTabs = ({ defaultValue, children }: SimpleTabsProps) => {
         {React.Children.map(children, (child) => {
           if (!React.isValidElement(child)) return null;
           if (child.type === SimpleTabs.Content) {
-            if (child.props.value === activeTab || child.props.forceMount) {
-              return <div>{child.props.children}</div>;
+            const props = child.props as { value: string; forceMount?: boolean; children: React.ReactNode };
+            if (props.value === activeTab || props.forceMount) {
+              return <div>{props.children}</div>;
             }
             return null;
           }
@@ -55,6 +56,7 @@ const SimpleTabs = ({ defaultValue, children }: SimpleTabsProps) => {
   );
 };
 
+/* eslint-disable react/display-name */
 SimpleTabs.List = ({ children }: SimpleTabsListProps) => (
   <div className="grid w-full grid-cols-4 gap-4">{children}</div>
 );
@@ -70,7 +72,9 @@ SimpleTabs.Trigger = ({ value, children, onClick }: SimpleTabsTriggerProps) => (
 );
 
 SimpleTabs.Content = ({ value, children, forceMount }: SimpleTabsContentProps) => {
-  // Este componente no renderiza nada por sí solo
+  // Este componente no renderiza nada por sí solo, se maneja en el padre
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _unused = { value, children, forceMount };
   return null;
 };
 
