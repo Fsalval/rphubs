@@ -288,7 +288,7 @@ export default function NotificationsPage() {
           <TabsTrigger value="reactions">Reacciones</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="space-y-4">
+        <TabsContent value="all">
           {/* Solicitudes de amistad pendientes */}
           {friendRequests.length > 0 && (
             <Card>
@@ -349,14 +349,15 @@ export default function NotificationsPage() {
           ) : (
             <div className="space-y-2">
               {filteredNotifications.map((notification) => (
-                <Card 
+                <div 
                   key={notification.id} 
-                  className={`transition-all cursor-pointer hover:shadow-md ${
-                    !notification.read ? 'bg-blue-50 border-blue-200' : ''
-                  }`}
+                  className="transition-all cursor-pointer hover:shadow-md"
                   onClick={() => !notification.read && markAsRead(notification.id)}
                 >
-                  <CardContent className="p-4">
+                  <Card className={`${
+                    !notification.read ? 'bg-blue-50 border-blue-200' : ''
+                  }`}>
+                    <CardContent className="p-4">
                     <div className="flex items-start gap-4">
                       <div className="flex-shrink-0">
                         {getNotificationIcon(notification.type)}
@@ -394,6 +395,7 @@ export default function NotificationsPage() {
                     </div>
                   </CardContent>
                 </Card>
+                </div>
               ))}
             </div>
           )}
@@ -402,12 +404,13 @@ export default function NotificationsPage() {
         <TabsContent value="unread">
           <div className="space-y-2">
             {filteredNotifications.map((notification) => (
-              <Card 
+              <div 
                 key={notification.id} 
-                className="bg-blue-50 border-blue-200 transition-all cursor-pointer hover:shadow-md"
+                className="transition-all cursor-pointer hover:shadow-md"
                 onClick={() => markAsRead(notification.id)}
               >
-                <CardContent className="p-4">
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
                       {getNotificationIcon(notification.type)}
@@ -425,6 +428,7 @@ export default function NotificationsPage() {
                   </div>
                 </CardContent>
               </Card>
+              </div>
             ))}
           </div>
         </TabsContent>

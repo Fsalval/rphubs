@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { useCharacter } from '../layout';
 import { sanitize } from '@/lib/sanitize';
 import { ref, get, push, set, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import { Character } from '@/lib/types';
 
 // Tipos
 interface Post {
@@ -92,7 +94,7 @@ export default function FeedPage() {
 
         // 2. Posts de amigos
         for (const friendId of friends) {
-          const friend = allCharacters.find((c) => c.id === friendId);
+          const friend = allCharacters.find((c: Character) => c.id === friendId);
           if (!friend) continue;
 
           const friendPostsRef = ref(db, `characters/${friendId}/posts`);
@@ -354,7 +356,7 @@ export default function FeedPage() {
               {item.characterId === character.id && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="sm" className="h-8 w-8">
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>

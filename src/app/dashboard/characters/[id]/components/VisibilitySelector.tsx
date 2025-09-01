@@ -3,7 +3,14 @@
 
 import { useState } from 'react';
 
-export function VisibilitySelector({ value, onChange }) {
+type VisibilityType = 'public' | 'friends' | 'private';
+
+interface VisibilitySelectorProps {
+  value: VisibilityType;
+  onChange: (value: VisibilityType) => void;
+}
+
+export function VisibilitySelector({ value, onChange }: VisibilitySelectorProps) {
     return (
         <div className="flex gap-2 mt-2 text-sm">
         <span>Visibilidad:</span>

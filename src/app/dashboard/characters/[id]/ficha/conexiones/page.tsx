@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -14,11 +14,23 @@ import { Plus, ExternalLink, X, User, Users, Link as LinkIcon } from 'lucide-rea
 import { useCharacter } from '../../layout';
 import { ref, onValue, push, update, remove } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import { Character } from '@/lib/types';
+
+interface Connection {
+  id: string;
+  name: string;
+  relation: string;
+  description: string;
+  type?: 'manual' | 'linked';
+  linkedCharacterId?: string;
+  age?: number;
+  nationality?: string;
+}
 
 export default function ConexionesPage() {
     const { character, isOwner, allCharacters } = useCharacter();
-    const [connections, setConnections] = useState<any[]>([]);
-    const [selectedConnection, setSelectedConnection] = useState<Character | null>(null);
+    const [connections, setConnections] = useState<Connection[]>([]);
+    const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null);
     const [loading, setLoading] = useState(true);
 
     // Estados para nuevo formulario
@@ -161,13 +173,13 @@ export default function ConexionesPage() {
             </CardHeader>
             <CardContent className="flex-1">
                 <ScrollArea className="h-[calc(100vh-120px)]">
-                <Tabs defaultValue="manual" className="w-full">
+                <Tabs defaultValue="manual">
                     <TabsList className="grid w-full grid-cols-2 mb-4">
                     <TabsTrigger value="manual">Personas</TabsTrigger>
                     <TabsTrigger value="linked">Personajes</TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="manual" className="space-y-2">
+                    <TabsContent value="manual">
                     {manualConnections.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No hay personas creadas.</p>
                     ) : (
@@ -188,12 +200,12 @@ export default function ConexionesPage() {
                     )}
                     </TabsContent>
 
-                    <TabsContent value="linked" className="space-y-2">
+                    <TabsContent value="linked">
                     {linkedConnections.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No hay personajes vinculados.</p>
                     ) : (
                         linkedConnections.map((conn) => {
-                        const linkedChar = allCharacters.find((c: any) => c.id === conn.linkedCharacterId);
+                        const linkedChar = allCharacters.find((c: Character) => c.id === conn.linkedCharacterId);
                         return (
                             <div
                             key={conn.id}

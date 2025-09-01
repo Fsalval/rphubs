@@ -5,8 +5,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
+import { Character } from '@/lib/types';
 
-export function WriteArea({ character, value, onChange, onSubmit, placeholder = "¿Qué está pensando tu personaje?" }) {
+interface WriteAreaProps {
+  character: Character;
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  placeholder?: string;
+}
+
+export function WriteArea({ character, value, onChange, onSubmit, placeholder = "¿Qué está pensando tu personaje?" }: WriteAreaProps) {
     return (
         <Card>
         <CardHeader className="flex flex-row items-start gap-4 pb-2">

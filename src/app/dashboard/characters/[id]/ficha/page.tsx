@@ -39,7 +39,7 @@ const VisibilitySelector = ({
   };
 
   return (
-    <Select value={value} onValueChange={onChange}>
+    <Select value={value} onValueChange={(value) => onChange(value as 'public' | 'friends' | 'private')}>
       <SelectTrigger className={`w-32 ${className}`}>
         <div className="flex items-center gap-2">
           {getIcon()}
@@ -432,7 +432,7 @@ export default function FichaPage() {
                 {enlaces.map((enlace, index) => (
                   <div key={index} className="flex items-center gap-2 p-2 border rounded">
                     <span className="flex-1">{enlace}</span>
-                    <Button size="sm" variant="destructive" onClick={() => removeEnlace(index)}>
+                    <Button size="sm" variant="outline" onClick={() => removeEnlace(index)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>

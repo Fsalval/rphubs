@@ -258,9 +258,9 @@ export default function FloatingChat() {
                                 {chat.lastMessage || 'Sin mensajes'}
                               </p>
                             </div>
-                            {chat.unreadCount?.[character.id] > 0 && (
+                            {character?.id && chat.unreadCount?.[character.id] && chat.unreadCount[character.id] > 0 && (
                               <Badge variant="destructive" className="text-xs">
-                                {chat.unreadCount?.[character.id]}
+                                {chat.unreadCount[character.id]}
                               </Badge>
                             )}
                           </div>

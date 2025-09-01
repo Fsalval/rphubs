@@ -4,7 +4,7 @@
 import { useEffect, useState, createContext, useContext } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
-import { ref, onValue, get } from 'firebase/database';
+import { ref, onValue, get, set, remove } from 'firebase/database';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Search, Settings, Bell, Mail, Palette, Home } from 'lucide-react';
@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { useTheme, type Theme } from '@/lib/theme-context';
+import { Character } from '@/lib/types';
+import { User } from 'firebase/auth';
 import FloatingChat from './components/FloatingChat';
 
 // Contexto para compartir el personaje
@@ -25,7 +27,7 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
   const { theme, setTheme, availableThemes } = useTheme();
 
   const [character, setCharacter] = useState<Character | null>(null);
-  const [user, setUser] = useState<Character | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');

@@ -76,7 +76,7 @@ export function PostCard({
             {isOwner && !editing && (
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="sm">
                     <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -84,7 +84,6 @@ export function PostCard({
                     <DropdownMenuItem onClick={() => setEditing(true)}>Editar</DropdownMenuItem>
                     <DropdownMenuItem
                     className="text-destructive"
-                    onSelect={(e) => e.preventDefault()}
                     onClick={() => onDelete?.(post.id)}
                     >
                     Eliminar

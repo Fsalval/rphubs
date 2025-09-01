@@ -4,7 +4,20 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 
-export function FriendRequestMenu({ requests, onAccept, onReject }) {
+interface FriendRequest {
+  fromId: string;
+  avatarUrl: string;
+  charName: string;
+  charUsername: string;
+}
+
+interface FriendRequestMenuProps {
+  requests: FriendRequest[];
+  onAccept: (requestId: string) => void;
+  onReject: (requestId: string) => void;
+}
+
+export function FriendRequestMenu({ requests, onAccept, onReject }: FriendRequestMenuProps) {
     if (requests.length === 0) return null;
 
     return (

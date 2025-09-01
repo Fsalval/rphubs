@@ -212,14 +212,14 @@ export default function CharacterProfilePage() {
 
         {/* Contenido principal */}
         <div className="md:col-span-8 lg:col-span-9 space-y-6">
-          <Tabs defaultValue="public-wall" className="w-full">
+          <Tabs defaultValue="public-wall">
             <TabsList className="flex justify-center gap-8 border-b border-border pb-2 w-full">
               <TabsTrigger value="feed">Feed</TabsTrigger>
               <TabsTrigger value="public-wall">Mi Muro</TabsTrigger>
             </TabsList>
 
             {/* Muro Público */}
-            <TabsContent value="public-wall" className="space-y-6">
+            <TabsContent value="public-wall">
               <Card>
                 <CardHeader>
                   <div className="flex gap-4">
@@ -251,7 +251,7 @@ export default function CharacterProfilePage() {
                     {/* Menú de tres puntos */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="sm">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -311,7 +311,7 @@ export default function CharacterProfilePage() {
                         {isOwner && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <Button variant="ghost" size="sm">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -324,7 +324,6 @@ export default function CharacterProfilePage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
-                                onSelect={(e) => e.preventDefault()}
                                 onClick={() => handleDeletePost(post.id)}
                               >
                                 Eliminar

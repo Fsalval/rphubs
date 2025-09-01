@@ -122,7 +122,7 @@ export interface Chat {
   participantAvatars: Record<string, string>;
   lastMessage?: string;
   lastMessageTime: number;
-  unreadCount: Record<string, number>; // ← Este era el problema
+  unreadCount?: Record<string, number>; // Hacerlo opcional para evitar errores
 }
 
 /**
