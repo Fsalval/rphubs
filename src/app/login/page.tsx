@@ -13,12 +13,29 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
+      console.log('Intentando iniciar sesión con Google...');
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      console.log('Provider creado:', provider);
+      console.log('Auth object:', auth);
+      
+      const result = await signInWithPopup(auth, provider);
+      console.log('Resultado del login:', result);
       router.push('/dashboard');
-    } catch (error) {
-      console.error('Error al iniciar sesión:', error);
-      alert('Hubo un error al iniciar sesión con Google.');
+    } catch (error: any) {
+      console.error('Error completo al iniciar sesión:', error);
+      console.error('Código de error:', error.code);
+      console.error('Mensaje de error:', error.message);
+      
+      let errorMessage = 'Hubo un error al iniciar sesión con Google.';
+      if (error.code === 'auth/popup-blocked') {
+        errorMessage = 'El popup fue bloqueado. Por favor, permite popups para este sitio.';
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = 'El popup fue cerrado. Intenta nuevamente.';
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        errorMessage = 'Solicitud de popup cancelada.';
+      }
+      
+      alert(errorMessage + ' Error: ' + error.code);
     } finally {
       setLoading(false);
     }
