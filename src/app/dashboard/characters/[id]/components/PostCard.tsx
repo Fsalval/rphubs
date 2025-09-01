@@ -1,4 +1,3 @@
-// src/app/dashboard/characters/[id]/components/PostCard.tsx
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -8,6 +7,17 @@ import { MoreHorizontal, ThumbsUp, Frown, Laugh } from 'lucide-react';
 import { sanitize } from '@/lib/sanitize';
 import { Textarea } from '@/components/ui/textarea';
 import { useState } from 'react';
+import { Post } from '@/lib/types'; 
+
+type PostCardProps = {
+    post: Post;
+    isOwner: boolean;
+    onEdit?: (id: string, content: string) => void;
+    onDelete?: (id: string) => void;
+    likes?: number;
+    heartbreaks?: number;
+    laughs?: number;
+};
 
 export function PostCard({
     post,
@@ -17,7 +27,7 @@ export function PostCard({
     likes = 0,
     heartbreaks = 0,
     laughs = 0,
-    }) {
+}: PostCardProps) {
     const [editing, setEditing] = useState(false);
     const [content, setContent] = useState(post.content);
 
@@ -41,10 +51,13 @@ export function PostCard({
                 <div className="space-y-2 mt-2">
                     <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={4} />
                     <div className="flex gap-2">
-                    <Button size="sm" onClick={() => {
+                    <Button
+                        size="sm"
+                        onClick={() => {
                         onEdit?.(post.id, content);
                         setEditing(false);
-                    }}>
+                        }}
+                    >
                         Guardar
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setEditing(false)}>

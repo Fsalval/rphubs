@@ -1,5 +1,3 @@
-// src/lib/types.ts
-
 /**
  * Enlace social de un personaje (redes, sitios, etc.)
  */
@@ -100,7 +98,7 @@ export interface Character {
 export interface Post {
   id: string;
   content: string;
-  time: string;
+  time: string | number; // Acepta ambos formatos
   likes: number;
   hearts?: number;
   laughs?: number;
@@ -124,7 +122,7 @@ export interface Chat {
   participantAvatars: Record<string, string>;
   lastMessage?: string;
   lastMessageTime: number;
-  unreadCount: Record<string, number>;
+  unreadCount: Record<string, number>; // ← Este era el problema
 }
 
 /**

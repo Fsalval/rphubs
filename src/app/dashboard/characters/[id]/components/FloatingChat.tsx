@@ -30,6 +30,7 @@ interface Chat {
   participantUsernames: { [key: string]: string };
   lastMessage: string;
   lastMessageTime: number;
+  unreadCount?: { [key: string]: number };
 }
 
 export default function FloatingChat() {
