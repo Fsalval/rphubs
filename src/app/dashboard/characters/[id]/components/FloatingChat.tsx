@@ -260,7 +260,7 @@ export default function FloatingChat() {
                             </div>
                             {chat.unreadCount?.[character.id] > 0 && (
                               <Badge variant="destructive" className="text-xs">
-                                {chat.unreadCount[character.id]}
+                                {chat.unreadCount?.[character.id]}
                               </Badge>
                             )}
                           </div>
