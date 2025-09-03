@@ -281,6 +281,8 @@ function CreateCharacterContent() {
   );
 }
 
+export const dynamic = 'force-dynamic';
+
 export default function CreateCharacterPage() {
   return (
     <Suspense fallback={<div>Cargando...</div>}>
