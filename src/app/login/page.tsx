@@ -1,41 +1,58 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';  // Añade useEffect
 import { useRouter } from 'next/navigation';
-import { auth} from '@/lib/firebase';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { 
+  signInWithRedirect, 
+  GoogleAuthProvider, 
+  getRedirectResult  // Para capturar el resultado
+} from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);  // Añadir estado para errores
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Captura el resultado del redirect
+  useEffect(() => {
+    const handleRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          router.push('/dashboard');
+        }
+      } catch (error: any) {
+        console.error('Error en redirect:', error);
+        setError(
+          error.code === 'auth/popup-closed-by-user'
+            ? 'Se canceló el inicio de sesión'
+            : 'Error al iniciar sesión.'
+        );
+      }
+    };
+
+    handleRedirect();
+  }, [router]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
-    setError(null);  // Limpiar errores previos
+    setError(null);
     try {
       const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({
-        prompt: 'select_account'
-      });
+      provider.setCustomParameters({ prompt: 'select_account' });
       
-      const result = await signInWithPopup(auth, provider);
-      
-      if (result.user) {
-        router.push('/dashboard');
-      } else {
-        throw new Error('No se pudo obtener la información del usuario');
-      }
+      // Cambiado: signInWithRedirect
+      await signInWithRedirect(auth, provider);
       
     } catch (error: any) {
       console.error('Error al iniciar sesión:', error);
       setError(
-        error.code === 'auth/popup-closed-by-user' 
+        error.code === 'auth/popup-closed-by-user'
           ? 'Se cerró la ventana de inicio de sesión'
           : 'Error al iniciar sesión. Por favor, intenta de nuevo.'
       );
-    } finally {
       setLoading(false);
     }
   };
