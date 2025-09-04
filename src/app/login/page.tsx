@@ -8,16 +8,33 @@ import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);  // Añadir estado para errores
   const router = useRouter();
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
+    setError(null);  // Limpiar errores previos
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
       const result = await signInWithPopup(auth, provider);
-      router.push('/dashboard');
-    } catch (error) {
+      
+      if (result.user) {
+        router.push('/dashboard');
+      } else {
+        throw new Error('No se pudo obtener la información del usuario');
+      }
+      
+    } catch (error: any) {
       console.error('Error al iniciar sesión:', error);
+      setError(
+        error.code === 'auth/popup-closed-by-user' 
+          ? 'Se cerró la ventana de inicio de sesión'
+          : 'Error al iniciar sesión. Por favor, intenta de nuevo.'
+      );
     } finally {
       setLoading(false);
     }
@@ -30,6 +47,13 @@ export default function LoginPage() {
         <p className="mb-6 text-center text-sm text-muted-foreground">
           Inicia sesión con Google para continuar
         </p>
+        
+        {error && (
+          <p className="mb-4 text-center text-sm text-red-500">
+            {error}
+          </p>
+        )}
+        
         <Button
           onClick={handleGoogleSignIn}
           disabled={loading}
