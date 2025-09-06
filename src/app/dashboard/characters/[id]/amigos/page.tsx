@@ -170,7 +170,7 @@ export default function AmigosPage() {
                       <h3 className="font-semibold text-center">{amigo.name}</h3>
                       <p className="text-sm text-gray-500 mb-2">@{amigo.username}</p>
                       <p className="text-xs text-gray-400 mb-3">
-                        Amigos desde {new Date(amigo.friendSince).toLocaleDateString()}
+                        Amigos desde {amigo.friendSince ? new Date(amigo.friendSince).toLocaleDateString() : 'Fecha desconocida'}
                       </p>
                       <div className="flex gap-2 w-full">
                         <Link href={`/dashboard/characters/${amigo.id}`} className="flex-1">
