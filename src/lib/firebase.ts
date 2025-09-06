@@ -7,7 +7,7 @@ import { getStorage } from 'firebase/storage';
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'dummy-api-key',
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'dummy.firebaseapp.com',
-    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || 'https://dummy-default-rtdb.firebaseio.com/',
+    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || 'https://rphubs-default-rtdb.firebaseio.com',
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'dummy-project',
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'dummy.appspot.com',
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '123456789',
@@ -20,7 +20,8 @@ console.log('🔧 Firebase Config Debug:', {
   authDomain: firebaseConfig.authDomain,
   databaseURL: firebaseConfig.databaseURL,
   projectId: firebaseConfig.projectId,
-  isDummy: firebaseConfig.apiKey === 'dummy-api-key'
+  isDummy: firebaseConfig.apiKey === 'dummy-api-key',
+  usingFallbackDB: !process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
 });
 
 // Inicializar Firebase
