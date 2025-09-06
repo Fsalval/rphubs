@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Edit, Save, X, Plus, Trash2, Eye, Users, Lock } from 'lucide-react';
+import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
+import { Edit, Save, X, Plus, Trash2, MoreHorizontal, Eye, Users, Lock } from 'lucide-react';
 import { useCharacter } from '../layout';
 import { db } from '@/lib/firebase';
 import { ref, update } from 'firebase/database';
@@ -24,9 +24,9 @@ const VisibilitySelector = ({
 }) => {
   const getIcon = () => {
     switch (value) {
-      case 'public': return <Eye className="h-4 w-4" />;
-      case 'friends': return <Users className="h-4 w-4" />;
-      case 'private': return <Lock className="h-4 w-4" />;
+      case 'public': return <Eye className="h-3 w-3" />;
+      case 'friends': return <Users className="h-3 w-3" />;
+      case 'private': return <Lock className="h-3 w-3" />;
     }
   };
 
@@ -39,34 +39,34 @@ const VisibilitySelector = ({
   };
 
   return (
-    <Select value={value} onValueChange={(value) => onChange(value as 'public' | 'friends' | 'private')}>
-      <SelectTrigger className={`w-32 ${className}`}>
-        <div className="flex items-center gap-2">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className={`flex items-center gap-1 text-xs text-muted-foreground ${className}`}>
           {getIcon()}
-          <span className="text-xs">{getLabel()}</span>
-        </div>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="public">
+          <span>{getLabel()}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => onChange('public')}>
           <div className="flex items-center gap-2">
             <Eye className="h-4 w-4" />
             <span>Público</span>
           </div>
-        </SelectItem>
-        <SelectItem value="friends">
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onChange('friends')}>
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             <span>Amigos</span>
           </div>
-        </SelectItem>
-        <SelectItem value="private">
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onChange('private')}>
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4" />
             <span>Privado</span>
           </div>
-        </SelectItem>
-      </SelectContent>
-    </Select>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
@@ -78,36 +78,47 @@ export default function FichaPage() {
   const [editingHistoria, setEditingHistoria] = useState(false);
   const [editingExtras, setEditingExtras] = useState(false);
   const [editingEnlaces, setEditingEnlaces] = useState(false);
+  const [editingAboutme, setEditingAboutme] = useState(false);
+  const [editingTags, setEditingTags] = useState(false);
   
   // Estados para contenido
   const [personalidad, setPersonalidad] = useState('');
   const [historia, setHistoria] = useState('');
   const [extras, setExtras] = useState('');
-  const [enlaces, setEnlaces] = useState<string[]>([]);
+  const [enlaces, setEnlaces] = useState<any[]>([]);
   const [nuevoEnlace, setNuevoEnlace] = useState('');
+  const [nuevoTag, setNuevoTag] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [aboutme, setAboutme] = useState('');
   
   // Estados para visibilidad
   const [personalidadVisibility, setPersonalidadVisibility] = useState<'public' | 'friends' | 'private'>('public');
   const [historiaVisibility, setHistoriaVisibility] = useState<'public' | 'friends' | 'private'>('public');
   const [extrasVisibility, setExtrasVisibility] = useState<'public' | 'friends' | 'private'>('public');
   const [enlacesVisibility, setEnlacesVisibility] = useState<'public' | 'friends' | 'private'>('public');
+  const [aboutmeVisibility, setAboutmeVisibility] = useState<'public' | 'friends' | 'private'>('public');
+  const [tagsVisibility, setTagsVisibility] = useState<'public' | 'friends' | 'private'>('public');
 
   // Cargar datos del personaje
-  useEffect(() => {
-    if (character) {
-      setPersonalidad(character.personalidad || '');
-      setHistoria(character.historia || character.trama || ''); // Migrar de trama a historia
-      setExtras(character.extras || '');
-      setEnlaces(character.enlaces || []);
-      
-      // Cargar configuraciones de visibilidad
-      setPersonalidadVisibility(character.personalidadVisibility || 'public');
-      setHistoriaVisibility(character.historiaVisibility || character.tramaVisibility || 'public');
-      setExtrasVisibility(character.extrasVisibility || 'public');
-      setEnlacesVisibility(character.enlacesVisibility || 'public');
-    }
-  }, [character]);
-
+// Cargar datos del personaje
+useEffect(() => {
+  if (character) {
+    setPersonalidad(character.personalidad || '');
+    setHistoria(character.historia || character.trama || '');
+    setExtras(character.extras || '');
+    setEnlaces(character.socialLinks || []); // Para enlaces sociales
+    setTags(character.tags || []); // Para etiquetas
+    setAboutme(character.profile || ''); // Para About me 
+    
+    // Cargar configuraciones de visibilidad
+    setPersonalidadVisibility(character.personalidadVisibility || 'public');
+    setHistoriaVisibility(character.historiaVisibility || character.tramaVisibility || 'public');
+    setExtrasVisibility(character.extrasVisibility || 'public');
+    setEnlacesVisibility(character.enlacesVisibility || 'public');
+    setAboutmeVisibility(character.aboutmeVisibility || 'public');
+    setTagsVisibility(character.tagsVisibility || 'public');
+  }
+}, [character]);
   // Función para manejar cambios de visibilidad
   const handleVisibilityChange = async (field: string, visibility: 'public' | 'friends' | 'private') => {
     try {
@@ -130,6 +141,12 @@ export default function FichaPage() {
           break;
         case 'enlaces':
           setEnlacesVisibility(visibility);
+          break;
+        case 'aboutme':
+          setAboutmeVisibility(visibility);
+          break;
+        case 'tags':
+          setTagsVisibility(visibility);
           break;
       }
     } catch (error) {
@@ -177,26 +194,44 @@ export default function FichaPage() {
   };
 
   // Función para guardar enlaces
+
+ // Función para guardar About me (profile)
+const saveAboutme = async () => {
+  try {
+    const updates = { profile: aboutme };
+    await update(ref(db, `characters/${character.id}`), updates);
+    updateCharacterData(updates);
+    setEditingAboutme(false);
+  } catch (error) {
+    console.error('Error saving profile:', error);
+  }
+};
+
+  // Función para guardar Etiquetas (tags)
+  const saveTags = async () => {
+    try {
+      const updates = { tags: tags };
+      await update(ref(db, `characters/${character.id}`), updates);
+      updateCharacterData(updates);
+      setEditingTags(false);
+    } catch (error) {
+      console.error('Error saving tags:', error);
+    }
+  };
+
+  // Función para guardar Enlaces sociales (socialLinks)
   const saveEnlaces = async () => {
     try {
-      const updates = { enlaces };
+      const updates = { socialLinks: enlaces };
       await update(ref(db, `characters/${character.id}`), updates);
       updateCharacterData(updates);
       setEditingEnlaces(false);
     } catch (error) {
-      console.error('Error saving enlaces:', error);
+      console.error('Error saving social links:', error);
     }
   };
 
-  // Función para agregar enlace
-  const addEnlace = () => {
-    if (nuevoEnlace.trim()) {
-      setEnlaces([...enlaces, nuevoEnlace.trim()]);
-      setNuevoEnlace('');
-    }
-  };
-
-  // Función para eliminar enlace
+  // Función para eliminar enlace o etiqueta
   const removeEnlace = (index: number) => {
     setEnlaces(enlaces.filter((_, i) => i !== index));
   };
@@ -207,6 +242,256 @@ export default function FichaPage() {
 
   return (
     <div className="grid gap-8 md:grid-cols-12">
+    {/* Sidebar izquierda */}
+    <div className="md:col-span-4 lg:col-span-3 space-y-6">
+      {/* About Me - Editable */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>About me</CardTitle>
+            {editingAboutme ? (
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => {
+                  saveAboutme();
+                  setEditingAboutme(false);
+                }}>
+                  <Save className="h-4 w-4" />
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  setAboutme(character.profile || '');
+                  setEditingAboutme(false);
+                }}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => {
+                setEditingAboutme(true);
+                setAboutme(character.profile || '');
+              }}>
+                <Edit className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {editingAboutme ? (
+            <div className="space-y-2">
+              <Textarea
+                value={aboutme}
+                onChange={(e) => setAboutme(e.target.value.slice(0, 1500))}
+                placeholder="Escribe algo sobre tu personaje..."
+                className="min-h-24"
+              />
+              <p className="text-xs text-right text-muted-foreground">
+                {aboutme.length}/1500 caracteres
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground whitespace-pre-line">
+              {character.profile || (
+                <span className="italic text-muted-foreground">No hay perfil definido. Haz clic en editar para agregar contenido.</span>
+              )}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Etiquetas - Editable */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Etiquetas</CardTitle>
+            {editingTags ? (
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => {
+                  saveTags();
+                  setEditingTags(false);
+                }}>
+                  <Save className="h-4 w-4" />
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  setTags(character.tags || []);
+                  setEditingTags(false);
+                }}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => {
+                setEditingTags(true);
+                setTags(character.tags || []);
+              }}>
+                <Edit className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {editingTags ? (
+            <div className="space-y-2">
+              <Input
+                value={nuevoTag}
+                onChange={(e) => setNuevoTag(e.target.value)}
+                placeholder="#etiqueta"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && nuevoTag.trim()) {
+                    e.preventDefault();
+                    const tag = nuevoTag.trim().startsWith('#') 
+                      ? nuevoTag.trim() 
+                      : `#${nuevoTag.trim()}`;
+                    if (tags.length < 10 && !tags.includes(tag)) {
+                      setTags([...tags, tag]);
+                    }
+                    setNuevoTag('');
+                  }
+                }}
+              />
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag, index) => (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => setTags(tags.filter((_, i) => i !== index))}
+                      className="ml-1 text-destructive hover:text-destructive-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <p className="text-xs text-right text-muted-foreground">
+                {tags.length}/10 etiquetas
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {character.tags && character.tags.length > 0 ? (
+                character.tags.map((tag: string, i: number) => (
+                  <Badge key={i} variant="secondary" className="text-xs">
+                    {tag}
+                  </Badge>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground italic">No hay etiquetas definidas. Haz clic en editar para agregar etiquetas.</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Enlaces sociales - Editable */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Enlaces</CardTitle>
+            {editingEnlaces ? (
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => {
+                  saveEnlaces();
+                  setEditingEnlaces(false);
+                }}>
+                  <Save className="h-4 w-4" />
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  setEnlaces(character.socialLinks || []);
+                  setEditingEnlaces(false);
+                }}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => {
+                setEditingEnlaces(true);
+                setEnlaces(character.socialLinks || []);
+              }}>
+                <Edit className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {editingEnlaces ? (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Nombre de la red (ej: Instagram)"
+                  value={nuevoEnlace.split('|')[0] || ''}
+                  onChange={(e) => {
+                    const url = nuevoEnlace.split('|')[1] || '';
+                    setNuevoEnlace(`${e.target.value}|${url}`);
+                  }}
+                  className="flex-1"
+                />
+                <Input
+                  placeholder="URL completa"
+                  value={nuevoEnlace.split('|')[1] || ''}
+                  onChange={(e) => {
+                    const name = nuevoEnlace.split('|')[0] || '';
+                    setNuevoEnlace(`${name}|${e.target.value}`);
+                  }}
+                  className="flex-1"
+                />
+                <Button size="sm" onClick={() => {
+                  if (nuevoEnlace.includes('|')) {
+                    const [name, url] = nuevoEnlace.split('|');
+                    if (name.trim() && url.trim() && enlaces.length < 3) {
+                      const newLink = { name: name.trim(), url: url.trim() };
+                      setEnlaces([...enlaces, newLink]);
+                      setNuevoEnlace('');
+                    }
+                  }
+                }}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {enlaces.map((link: { name: string; url: string }, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 border rounded">
+                    <span className="font-medium">{link.name}</span>
+                    <div className="flex gap-2">
+                      <a 
+                        href={link.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline text-sm"
+                      >
+                        Ver
+                      </a>
+                      <Button size="sm" variant="ghost" onClick={() => removeEnlace(index)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-right text-muted-foreground">
+                {enlaces.length}/3 enlaces
+              </p>
+            </div>
+          ) : (
+            character.socialLinks && character.socialLinks.length > 0 ? (
+              character.socialLinks.map((link: { name: string; url: string }, i: number) => (
+                <div key={i}>
+                  <a 
+                    href={link.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline block text-sm"
+                  >
+                    {link.name}
+                  </a>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No hay enlaces definidos. Haz clic en editar para agregar enlaces.</p>
+            )
+          )}
+        </CardContent>
+      </Card>
+    </div>
+
       {/* Contenido principal */}
       <div className="md:col-span-8 lg:col-span-9 space-y-6">
         {/* Información Básica */}
@@ -386,133 +671,6 @@ export default function FichaPage() {
         </CardContent>
       </Card>
 
-      {/* Enlaces */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Enlaces</CardTitle>
-            <div className="flex items-center gap-2">
-              <VisibilitySelector 
-                value={enlacesVisibility} 
-                onChange={(value) => handleVisibilityChange('enlaces', value)} 
-              />
-              {editingEnlaces ? (
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={saveEnlaces}>
-                    <Save className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setEditingEnlaces(false)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <Button size="sm" variant="outline" onClick={() => setEditingEnlaces(true)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {editingEnlaces ? (
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  value={nuevoEnlace}
-                  onChange={(e) => setNuevoEnlace(e.target.value)}
-                  placeholder="https://ejemplo.com"
-                  onKeyDown={(e) => e.key === 'Enter' && addEnlace()}
-                />
-                <Button size="sm" onClick={addEnlace}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              <div className="space-y-2">
-                {enlaces.map((enlace, index) => (
-                  <div key={index} className="flex items-center gap-2 p-2 border rounded">
-                    <span className="flex-1">{enlace}</span>
-                    <Button size="sm" variant="outline" onClick={() => removeEnlace(index)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {enlaces.length > 0 ? (
-                enlaces.map((enlace, index) => (
-                  <div key={index} className="p-2 border rounded">
-                    <a 
-                      href={enlace} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {enlace}
-                    </a>
-                  </div>
-                ))
-              ) : (
-                <span className="text-muted-foreground italic">
-                  No hay enlaces. Haz clic en editar para agregar enlaces.
-                </span>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      </div>
-
-      {/* Sidebar derecha */}
-      <div className="md:col-span-4 lg:col-span-3 space-y-6">
-        {/* About Me */}
-        <Card>
-          <CardHeader>
-            <CardTitle>About me</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground whitespace-pre-line line-clamp-6">
-              {character.profile || 'No hay perfil definido.'}
-            </p>
-            
-            {/* Etiquetas */}
-            {character.tags?.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Etiquetas</p>
-                <div className="flex flex-wrap gap-2">
-                  {character.tags.map((tag: string, i: number) => (
-                    <Badge key={i} variant="secondary" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Enlaces sociales */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Enlaces</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {character.socialLinks?.length > 0 ? (
-              character.socialLinks.map((link: any, i: number) => (
-                <div key={i}>
-                  <p className="text-sm text-muted-foreground">{link.name}</p>
-                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline block text-sm">
-                    {link.username || link.url}
-                  </a>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">No hay enlaces definidos.</p>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

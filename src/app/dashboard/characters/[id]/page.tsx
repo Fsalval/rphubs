@@ -170,21 +170,27 @@ export default function CharacterProfilePage() {
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground whitespace-pre-line line-clamp-6">
                 {character.biography || character.profile || 'No hay perfil definido.'}
-              </p>
-              
-              {/* Etiquetas */}
-              {character.tags?.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Etiquetas</p>
-                  <div className="flex flex-wrap gap-2">
-                    {character.tags.map((tag: string, i: number) => (
-                      <Badge key={i} variant="secondary" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+              </p>              
+            </CardContent>
+          </Card>
+          
+          {/* Etiquetas */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Etiquetas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4"> 
+              <div className="flex flex-wrap gap-2">
+                {character.tags?.length > 0 ? (
+                  character.tags.map((tag: string, i: number) => (
+                    <Badge key={i} variant="secondary" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">No hay etiquetas definidas.</p>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -195,11 +201,15 @@ export default function CharacterProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {character.socialLinks?.length > 0 ? (
-                character.socialLinks.map((link: any, i: number) => (
+                character.socialLinks.map((link: { name: string; url: string }, i: number) => (
                   <div key={i}>
-                    <p className="text-sm text-muted-foreground">{link.name}</p>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline block text-sm">
-                      {link.username || link.url}
+                    <a 
+                      href={link.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline block text-sm"
+                    >
+                      {link.name}
                     </a>
                   </div>
                 ))

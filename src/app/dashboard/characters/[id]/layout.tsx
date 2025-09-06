@@ -187,6 +187,11 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
     }
   };
 
+  // Función para actualizar datos del personaje
+  const updateCharacterData = (updates: any) => {
+    setCharacter(prev => prev ? { ...prev, ...updates } : prev);
+  };
+
   if (!character) {
     return <div className="flex items-center justify-center min-h-screen">Cargando personaje...</div>;
   }
@@ -195,7 +200,7 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
   const showNotifications = pathname === `/dashboard/characters/${characterId}`;
 
   return (
-    <CharacterContext.Provider value={{ character, isOwner, allCharacters, newMessagesCount }}>
+    <CharacterContext.Provider value={{ character, isOwner, allCharacters, newMessagesCount, updateCharacterData }}>
       <div className="min-h-screen bg-secondary">
         {/* Header */}
         <header className="bg-background/80 backdrop-blur-sm sticky top-0 z-20 border-b">
