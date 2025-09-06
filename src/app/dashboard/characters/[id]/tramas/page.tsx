@@ -1,6 +1,5 @@
 // src/app/dashboard/characters/[id]/tramas/page.tsx
 'use client';
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import Textarea from '@/components/ui/textarea';
@@ -20,19 +19,15 @@ import { sanitize } from '@/lib/sanitize';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-
 export default function TramasPage() {
   const { character, isOwner, allCharacters } = useCharacter();
   const searchParams = useSearchParams();
-
   const [tramas, setTramas] = useState<any[]>([]);
-  
   // Efecto para datos del taller
   useEffect(() => {
     const titulo = searchParams.get('titulo');
     const contenido = searchParams.get('contenido');
     const fromTaller = searchParams.get('fromTaller');
-    
     if (fromTaller && titulo && contenido) {
       setNewTramaName(titulo);
       setNewTramaContent(contenido);
@@ -57,7 +52,6 @@ export default function TramasPage() {
     });
     return () => unsubscribe();
   }, [character?.id]);
-
   const [showNewTrama, setShowNewTrama] = useState(false);
   const [newTramaName, setNewTramaName] = useState('');
   const [newTramaContent, setNewTramaContent] = useState('');
@@ -67,14 +61,12 @@ export default function TramasPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [newTramaVisibility, setNewTramaVisibility] = useState<'public'|'friends'|'private'>('public');
   const [newTramaResponseConfig, setNewTramaResponseConfig] = useState<'anyone'|'friends'|'collaborators'>('anyone');
-
   // Estados para edición y respuestas
   const [editingTrama, setEditingTrama] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<any>({});
   const [responseTexts, setResponseTexts] = useState<{[key: string]: string}>({});
   const [scrollTarget, setScrollTarget] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'public' | 'friends' | 'private' | 'collaborations'>('all');
-
   // Filtrado por visibilidad
   let visibleTramas = tramas;
   if (activeTab === 'public') {
@@ -90,7 +82,6 @@ export default function TramasPage() {
       t.collaborators?.includes(character.id) && t.author.username !== character.username
     );
   }
-
   // Efecto para scroll automático desde el menú lateral
   useEffect(() => {
     if (scrollTarget) {
@@ -106,35 +97,29 @@ export default function TramasPage() {
       setScrollTarget(null);
     }
   }, [scrollTarget, visibleTramas]);
-
   // Efecto para ajustar automáticamente la configuración de respuestas según la visibilidad
   useEffect(() => {
     if (newTramaVisibility === 'private') {
       setNewTramaResponseConfig('collaborators');
     }
   }, [newTramaVisibility]);
-
   // Función para manejar upload de imagen
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !character?.id) return;
-
     if (!file.type.startsWith('image/')) {
       alert('Por favor selecciona un archivo de imagen');
       return;
     }
-
     if (file.size > 5 * 1024 * 1024) { // 5MB
       alert('La imagen no debe superar 5MB');
       return;
     }
-
     setIsUploading(true);
     try {
       const timestamp = Date.now();
       const fileName = `trama-${timestamp}-${file.name}`;
       const imageRef = storageRef(storage, `characters/${character.id}/tramas/${fileName}`);
-      
       await uploadBytes(imageRef, file);
       const downloadURL = await getDownloadURL(imageRef);
       setNewTramaImageUrl(downloadURL);
@@ -145,14 +130,11 @@ export default function TramasPage() {
       setIsUploading(false);
     }
   };
-
   const removeImage = () => {
     setNewTramaImageUrl('');
   };
-
   const handleStartTrama = async () => {
   if (!newTramaName.trim() || !newTramaContent.trim()) return;
-
   const newPost = {
       id: Date.now().toString(),
       name: sanitize(newTramaName),
@@ -171,19 +153,16 @@ export default function TramasPage() {
       collaborators: [character.id, ...selectedChars],
       responseConfig: newTramaResponseConfig,
     };
-
     try {
       // ✅ Guardar en Firebase
       const tramasRef = ref(db, `characters/${character.id}/tramas`);
       await push(tramasRef, newPost);
-
       // ✅ Actualizar estado local
       setTramas([newPost, ...tramas]);
     } catch (error) {
       console.error('Error al guardar la trama:', error);
       // Puedes mostrar un mensaje de error al usuario
     }
-
     // ✅ Limpiar formulario
     setNewTramaName('');
     setNewTramaContent('');
@@ -194,11 +173,9 @@ export default function TramasPage() {
     setNewTramaResponseConfig('anyone');
     setShowNewTrama(false);
   };
-
   // Función para editar trama completa
   const handleEditTrama = async (tramaId: string) => {
     if (!editingData.name?.trim() || !editingData.content?.trim()) return;
-    
     try {
       const tramaRef = ref(db, `characters/${character.id}/tramas/${tramaId}`);
       await update(tramaRef, {
@@ -213,12 +190,10 @@ export default function TramasPage() {
       console.error('Error al editar trama:', error);
     }
   };
-
   // Función para agregar respuesta
   const handleAddResponse = async (tramaId: string) => {
     const responseText = responseTexts[tramaId]?.trim();
     if (!responseText) return;
-
     try {
       const responsesRef = ref(db, `characters/${character.id}/tramas/${tramaId}/responses`);
       const newResponse = {
@@ -230,20 +205,16 @@ export default function TramasPage() {
         },
         time: new Date().toISOString()
       };
-      
       await push(responsesRef, newResponse);
       setResponseTexts(prev => ({ ...prev, [tramaId]: '' }));
     } catch (error) {
       console.error('Error al agregar respuesta:', error);
     }
   };
-
   // Función para cargar respuestas de una trama
   const [tramaResponses, setTramaResponses] = useState<{[key: string]: any[]}>({});
-  
   useEffect(() => {
     if (!character?.id) return;
-    
     // Cargar respuestas para cada trama
     tramas.forEach(trama => {
       const responsesRef = ref(db, `characters/${character.id}/tramas/${trama.id}/responses`);
@@ -260,7 +231,6 @@ export default function TramasPage() {
       });
     });
   }, [tramas, character?.id]);
-
   const toggleCharacter = (charId: string) => {
     setSelectedChars(prev =>
       prev.includes(charId)
@@ -268,14 +238,12 @@ export default function TramasPage() {
         : [...prev, charId]
     );
   };
-
   const filteredCharacters = searchQuery.trim()
     ? allCharacters.filter((char: any) =>
         char.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         char.username.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : [];
-
   return (
     <div className="flex gap-6 h-screen overflow-hidden">
       {/* Menú lateral */}
@@ -338,7 +306,6 @@ export default function TramasPage() {
           </CardContent>
         </Card>
       </div>
-
       {/* Contenido principal */}
       <div className="flex-1 space-y-6 overflow-y-auto pr-4">
       <div className="flex justify-between items-center">
@@ -350,7 +317,6 @@ export default function TramasPage() {
           </Button>
         )}
       </div>
-
       {/* Submenú de visibilidad */}
       <div className="flex border-b border-border">
         <Button
@@ -394,7 +360,6 @@ export default function TramasPage() {
           Colaboraciones
         </Button>
       </div>
-
       {/* Formulario de nueva trama */}
       {showNewTrama && isOwner && (
         <Card>
@@ -405,8 +370,10 @@ export default function TramasPage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* 1. Título */}
-            <div>
+            {/* Título + Configuración en una sola línea */}
+          <div className="flex flex-wrap items-end gap-4">
+            {/* Título */}
+            <div className="flex-1 min-w-[300px]">
               <label className="text-sm font-medium">Título de la trama</label>
               <Input
                 value={newTramaName}
@@ -416,97 +383,84 @@ export default function TramasPage() {
               />
             </div>
 
-            {/* 1.5. Configuraciones en horizontal */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Visibilidad */}
-              <div>
-                <label className="text-sm font-medium">Visibilidad</label>
-                <Select 
-                  value={newTramaVisibility} 
-                  onValueChange={(value: string) => setNewTramaVisibility(value as 'public'|'friends'|'private')}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Selecciona la visibilidad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="public">Pública - Todos pueden verla</SelectItem>
-                    <SelectItem value="friends">Amigos - Solo amigos y colaboradores</SelectItem>
-                    <SelectItem value="private">Privada - Solo colaboradores</SelectItem>
-                  </SelectContent>
-                </Select>
+            {/* Visibilidad */}
+            <div className="flex flex-col">
+              <label className="text-xs text-muted-foreground mb-1">Visibilidad</label>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-sm">
+                  {newTramaVisibility === 'public' ? 'Pública' :
+                  newTramaVisibility === 'friends' ? 'Amigos' : 'Privada'}
+                </Badge>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => {
+                      setNewTramaVisibility('public');
+                      if (newTramaResponseConfig === 'collaborators') {
+                        setNewTramaResponseConfig('anyone');
+                      }
+                    }}>
+                      Pública
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      setNewTramaVisibility('friends');
+                    }}>
+                      Amigos
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      setNewTramaVisibility('private');
+                      setNewTramaResponseConfig('collaborators');
+                    }}>
+                      Privada + colaboradores
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
+            </div>
 
-              {/* Configuración de respuestas */}
-              <div>
-                <label className="text-sm font-medium">¿Quién puede responder?</label>
-                <Select 
-                  value={newTramaResponseConfig} 
-                  onValueChange={(value: string) => setNewTramaResponseConfig(value as 'anyone'|'friends'|'collaborators')}
-                >
-                  <SelectTrigger className={`mt-1 ${newTramaVisibility === 'private' ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    <SelectValue placeholder="Selecciona quién puede responder" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {newTramaVisibility === 'public' && (
-                      <SelectItem value="anyone">
-                        Cualquiera puede responder
-                      </SelectItem>
-                    )}
-                    {newTramaVisibility !== 'private' && (
-                      <SelectItem value="friends">
+            {/* ¿Quién puede responder? */}
+            <div className="flex flex-col">
+              <label className="text-xs text-muted-foreground mb-1">¿Quién puede responder?</label>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-sm">
+                  {newTramaResponseConfig === 'anyone' ? 'Cualquiera' :
+                  newTramaResponseConfig === 'friends' ? 'Solo amigos' : 'Solo colaboradores'}
+                </Badge>
+                {newTramaVisibility !== 'private' ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {newTramaVisibility === 'public' && (
+                        <DropdownMenuItem onClick={() => setNewTramaResponseConfig('anyone')}>
+                          Cualquiera puede responder
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => setNewTramaResponseConfig('friends')}>
                         Solo amigos
-                      </SelectItem>
-                    )}
-                    <SelectItem value="collaborators">Solo colaboradores</SelectItem>
-                </SelectContent>
-              </Select>
-              {newTramaVisibility === 'private' && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  En tramas privadas, solo los colaboradores pueden responder.
-                </p>
-              )}
-            </div>
-            </div>
-
-            {/* 2. Invitar personajes */}
-            <div>
-              <label className="text-sm font-medium">Invitar personajes</label>
-              <Input
-                placeholder="Buscar por nombre..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(sanitize(e.target.value))}
-                className="mt-1"
-              />
-                {searchQuery.trim() && (
-                  <div className="p-2 space-y-1">
-                    {filteredCharacters.slice(0, 8).map((char: any) => (
-                      <div
-                        key={char.id}
-                        className={`flex items-center gap-3 p-2 rounded cursor-pointer ${
-                          selectedChars.includes(char.id)
-                            ? 'bg-primary text-primary-foreground'
-                            : 'hover:bg-muted'
-                        }`}
-                        onClick={() => toggleCharacter(char.id)}
-                      >
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold">
-                          {char.name.charAt(0)}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{char.name}</p>
-                          <p className="text-xs text-muted-foreground">@{char.username}</p>
-                        </div>
-                        {selectedChars.includes(char.id) && (
-                          <Users className="h-4 w-4 text-green-500" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setNewTramaResponseConfig('collaborators')}>
+                        Solo colaboradores
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">
+                    Solo colaboradores (obligatorio)
+                  </Badge>
                 )}
-              
+              </div>
             </div>
-
+          </div>
             {/* 2. Invitar personajes */}
+
             <div>
               <label className="text-sm font-medium">Invitar colaboradores</label>
               <Input
@@ -521,7 +475,7 @@ export default function TramasPage() {
                     .filter((char: any) => 
                       char.id !== character.id &&
                       (char.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                       char.username.toLowerCase().includes(searchQuery.toLowerCase()))
+                      char.username.toLowerCase().includes(searchQuery.toLowerCase()))
                     )
                     .slice(0, 8)
                     .map((char: any) => (
@@ -584,7 +538,6 @@ export default function TramasPage() {
                 </div>
               )}
             </div>
-
             {/* 3. Banner/Imagen de la trama */}
             <div>
               <label className="text-sm font-medium">Banner de la trama (opcional)</label>
@@ -629,7 +582,6 @@ export default function TramasPage() {
                 </div>
               )}
             </div>
-
             {/* 4. Cuerpo del texto - Grande, dominante, sin distracciones */}
             <div>
               <label className="text-sm font-medium">Desarrollo narrativo</label>
@@ -640,7 +592,6 @@ export default function TramasPage() {
                 className="w-full min-h-[300px] text-base leading-relaxed mt-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none"
               />
             </div>
-
             {/* Acciones */}
             <div className="flex justify-end gap-2 pt-4">
               <Button
@@ -666,7 +617,6 @@ export default function TramasPage() {
           </CardContent>
         </Card>
       )}
-
       {/* Muro de tramas */}
       <div className="space-y-6">
         {visibleTramas.length === 0 ? (
@@ -685,46 +635,120 @@ export default function TramasPage() {
                       className="text-2xl font-bold"
                       placeholder="Título de la trama"
                     />
-                    
-                    <div className="flex gap-2">
-                      <select
-                        value={editingData.visibility || trama.visibility}
-                        onChange={(e) => setEditingData((prev: any) => ({ ...prev, visibility: e.target.value }))}
-                        className="px-3 py-1 border rounded text-sm"
-                      >
-                        <option value="public">Pública</option>
-                        <option value="friends">Amigos</option>
-                        <option value="private">Privada</option>
-                      </select>
-                      
-                      <select
-                        value={editingData.status || trama.status}
-                        onChange={(e) => setEditingData((prev: any) => ({ ...prev, status: e.target.value }))}
-                        className="px-3 py-1 border rounded text-sm"
-                      >
-                        <option value="pending">Pendiente</option>
-                        <option value="in-progress">En proceso</option>
-                        <option value="finished">Finalizada</option>
-                      </select>
-                      
-                      <select
-                        value={editingData.responseConfig || trama.responseConfig}
-                        onChange={(e) => setEditingData((prev: any) => ({ ...prev, responseConfig: e.target.value }))}
-                        className="px-3 py-1 border rounded text-sm"
-                      >
-                        <option value="anyone">Cualquiera puede responder</option>
-                        <option value="friends">Solo amigos</option>
-                        <option value="collaborators">Solo colaboradores</option>
-                      </select>
+                    {/* Configuraciones de edición con DropdownMenu */}
+                    <div className="space-y-3">
+                      {/* Visibilidad */}
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Visibilidad</label>
+                        <div className="mt-1 flex items-center gap-2">
+                          <Badge variant="outline" className="text-sm">
+                            {(editingData.visibility || trama.visibility) === 'public' ? 'Pública' :
+                             (editingData.visibility || trama.visibility) === 'friends' ? 'Amigos' : 'Privada'}
+                          </Badge>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem onClick={() => {
+                                const newVis = 'public';
+                                setEditingData((prev: any) => ({ ...prev, visibility: newVis }));
+                                // Si era privada y cambia, permitir más opciones de respuesta
+                                if ((prev?.visibility || trama.visibility) === 'private') {
+                                  setEditingData((p: any) => ({ ...p, responseConfig: 'anyone' }));
+                                }
+                              }}>
+                                Pública
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                setEditingData((prev: any) => ({ ...prev, visibility: 'friends' }));
+                              }}>
+                                Amigos
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                setEditingData((prev: any) => ({ ...prev, visibility: 'private', responseConfig: 'collaborators' }));
+                              }}>
+                                Privada (solo colaboradores)
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+
+                      {/* Estado */}
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Estado</label>
+                        <div className="mt-1 flex items-center gap-2">
+                          <Badge variant="outline" className="text-sm">
+                            {(editingData.status || trama.status) === 'finished' ? 'Finalizada' :
+                             (editingData.status || trama.status) === 'in-progress' ? 'En proceso' : 'Pendiente'}
+                          </Badge>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem onClick={() => setEditingData((prev: any) => ({ ...prev, status: 'pending' }))}>
+                                Pendiente
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setEditingData((prev: any) => ({ ...prev, status: 'in-progress' }))}>
+                                En proceso
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setEditingData((prev: any) => ({ ...prev, status: 'finished' }))}>
+                                Finalizada
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+
+                      {/* Quién puede responder */}
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">¿Quién puede responder?</label>
+                        <div className="mt-1 flex items-center gap-2">
+                          <Badge variant="outline" className="text-sm">
+                            {(editingData.responseConfig || trama.responseConfig) === 'anyone' ? 'Cualquiera' :
+                             (editingData.responseConfig || trama.responseConfig) === 'friends' ? 'Solo amigos' : 'Solo colaboradores'}
+                          </Badge>
+                          {(editingData.visibility || trama.visibility) !== 'private' ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                {(editingData.visibility || trama.visibility) === 'public' && (
+                                  <DropdownMenuItem onClick={() => setEditingData((prev: any) => ({ ...prev, responseConfig: 'anyone' }))}>
+                                    Cualquiera
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => setEditingData((prev: any) => ({ ...prev, responseConfig: 'friends' }))}>
+                                  Solo amigos
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setEditingData((prev: any) => ({ ...prev, responseConfig: 'collaborators' }))}>
+                                  Solo colaboradores
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">
+                              Solo colaboradores (obligatorio)
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    
                     <Textarea
                       value={editingData.content || trama.content}
                       onChange={(e) => setEditingData((prev: any) => ({ ...prev, content: e.target.value }))}
                       className="min-h-[200px] w-full resize-none"
                       placeholder="Contenido de la trama"
                     />
-                    
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => handleEditTrama(trama.id)}>
                         <CheckCircle className="h-4 w-4 mr-2" />
@@ -774,7 +798,6 @@ export default function TramasPage() {
                         </DropdownMenu>
                       )}
                     </div>
-                    
                     {/* Banner de la trama */}
                     {trama.imageUrl && (
                       <div className="mb-4">
@@ -785,7 +808,6 @@ export default function TramasPage() {
                         />
                       </div>
                     )}
-                    
                     {/* Etiquetas */}
                     <div className="flex flex-wrap gap-2 mb-4">
                       {(trama.tags ?? []).map((tag: string) => (
@@ -794,7 +816,6 @@ export default function TramasPage() {
                         </span>
                       ))}
                     </div>
-                    
                     {/* Información del autor y fecha/estado */}
                     <div className="flex items-center justify-between mb-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
@@ -812,14 +833,12 @@ export default function TramasPage() {
                         <span>{new Date(trama.time).toLocaleString()}</span>
                       </div>
                     </div>
-                    
                     {/* Cuerpo del texto */}
                     <div className="mb-4 max-w-none">
                       <p className="text-base leading-relaxed whitespace-pre-wrap break-words">
                         {trama.content}
                       </p>
                     </div>
-
                     {/* Respuestas cronológicas */}
                     {tramaResponses[trama.id]?.length > 0 && (
                       <div className="border-t pt-4 mt-4">
@@ -842,7 +861,6 @@ export default function TramasPage() {
                         </div>
                       </div>
                     )}
-                    
                     {/* Campo de respuesta visible */}
                     <div className="border-t pt-4 mt-4">
                       <div className="space-y-3">
@@ -870,7 +888,6 @@ export default function TramasPage() {
                         </div>
                       </div>
                     </div>
-                    
                     {/* Información de participantes */}
                     <div className="flex items-center justify-between pt-4 border-t text-xs text-muted-foreground">
                       <span>
@@ -878,7 +895,7 @@ export default function TramasPage() {
                       </span>
                       <span>
                         Respuestas: {trama.responseConfig === 'anyone' ? 'Cualquiera' : 
-                                   trama.responseConfig === 'friends' ? 'Solo amigos' : 'Solo colaboradores'}
+                                  trama.responseConfig === 'friends' ? 'Solo amigos' : 'Solo colaboradores'}
                       </span>
                     </div>
                   </>
