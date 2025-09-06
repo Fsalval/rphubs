@@ -3,26 +3,16 @@ import { getAuth } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
 
-// Configuración con valores por defecto para evitar errores durante el build
+// Configuración directa - TEMPORAL para que funcione en producción
 const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'dummy-api-key',
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'dummy.firebaseapp.com',
-    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || 'https://rphubs-default-rtdb.firebaseio.com',
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'dummy-project',
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'dummy.appspot.com',
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '123456789',
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:123456789:web:abc123'
+    apiKey: "AIzaSyDFOR_9CTWIitgM5EYRg34YHKS134lX5tw",
+    authDomain: "rphubs.firebaseapp.com",
+    databaseURL: "https://rphubs-default-rtdb.firebaseio.com",
+    projectId: "rphubs",
+    storageBucket: "rphubs.appspot.com",
+    messagingSenderId: "555326551319",
+    appId: "1:555326551319:web:779b92eee7bd404f2a7352"
 };
-
-// Debug para producción
-console.log('🔧 Firebase Config Debug:', {
-  apiKey: firebaseConfig.apiKey?.substring(0, 10) + '...',
-  authDomain: firebaseConfig.authDomain,
-  databaseURL: firebaseConfig.databaseURL,
-  projectId: firebaseConfig.projectId,
-  isDummy: firebaseConfig.apiKey === 'dummy-api-key',
-  usingFallbackDB: !process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
-});
 
 // Inicializar Firebase
 let app;
