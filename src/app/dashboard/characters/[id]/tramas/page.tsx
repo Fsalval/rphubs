@@ -656,7 +656,7 @@ export default function TramasPage() {
                                 const newVis = 'public';
                                 setEditingData((prev: any) => ({ ...prev, visibility: newVis }));
                                 // Si era privada y cambia, permitir más opciones de respuesta
-                                if ((prev?.visibility || trama.visibility) === 'private') {
+                                if ((editingData.visibility || trama.visibility) === 'private') {
                                   setEditingData((p: any) => ({ ...p, responseConfig: 'anyone' }));
                                 }
                               }}>
