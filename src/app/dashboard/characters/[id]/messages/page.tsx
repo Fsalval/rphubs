@@ -54,14 +54,14 @@ export default function MessagesPage() {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const userChats = Object.entries(data)
-          .filter(([_, chat]) => {
+          .filter(([_, chat]: [string, any]) => {
             return (
               chat.participants &&
               chat.participants.includes(character.id) &&
               chat.participants.length === 2
             );
           })
-          .map(([id, chat]) => ({
+          .map(([id, chat]: [string, any]) => ({
             id,
             ...chat,
           }))
@@ -110,7 +110,7 @@ export default function MessagesPage() {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const msgs = Object.entries(data)
-          .map(([id, msg]) => ({ id, ...msg }))
+          .map(([id, msg]: [string, any]) => ({ id, ...msg }))
           .sort((a, b) => a.timestamp - b.timestamp);
         setMessages(msgs);
       } else {
