@@ -13,11 +13,19 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
+      console.log('🔐 Iniciando login con Google...');
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      console.log('✅ Login exitoso:', {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName
+      });
       router.push('/dashboard');
-    } catch (error) {
-      console.error('Error al iniciar sesión:', error);
+    } catch (error: any) {
+      console.error('❌ Error al iniciar sesión:', error);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error message:', error.message);
     } finally {
       setLoading(false);
     }

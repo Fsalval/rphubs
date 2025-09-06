@@ -14,6 +14,15 @@ const firebaseConfig = {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:123456789:web:abc123'
 };
 
+// Debug para producción
+console.log('🔧 Firebase Config Debug:', {
+  apiKey: firebaseConfig.apiKey?.substring(0, 10) + '...',
+  authDomain: firebaseConfig.authDomain,
+  databaseURL: firebaseConfig.databaseURL,
+  projectId: firebaseConfig.projectId,
+  isDummy: firebaseConfig.apiKey === 'dummy-api-key'
+});
+
 // Inicializar Firebase
 let app;
 if (!getApps().length) {

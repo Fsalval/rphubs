@@ -45,15 +45,26 @@ export default function CharactersPage() {
       useEffect(() => {
     if (!user) return;
 
+    console.log('🔍 Debug - Usuario:', user.uid, user.email);
+    console.log('🔍 Debug - Firebase URL:', process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL);
+
     const charactersRef = ref(db, 'characters');
     const unsubscribe = onValue(charactersRef, (snapshot) => {
       const data = snapshot.val();
+      console.log('🔍 Debug - Datos desde Firebase:', data);
+      
       if (data) {
-        const list = Object.entries(data)
-          .map(([id, char]: [string, any]) => ({ id, ...char }))
-          .filter((char) => char.userId === user.uid);
-        setCharacters(list);
+        const allCharacters = Object.entries(data)
+          .map(([id, char]: [string, any]) => ({ id, ...char }));
+        console.log('🔍 Debug - Todos los personajes:', allCharacters.length);
+        
+        const userCharacters = allCharacters.filter((char) => char.userId === user.uid);
+        console.log('🔍 Debug - Personajes del usuario:', userCharacters.length);
+        console.log('🔍 Debug - Lista filtrada:', userCharacters);
+        
+        setCharacters(userCharacters);
       } else {
+        console.log('🔍 Debug - No hay datos en Firebase');
         setCharacters([]);
       }
     });
