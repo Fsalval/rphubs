@@ -14,6 +14,13 @@ import { ref, onValue, push, serverTimestamp, set } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCharacter } from '../layout';
 
+interface Character {
+  id: string;
+  name: string;
+  username: string;
+  avatarUrl?: string;
+}
+
 interface Message {
   id: string;
   senderId: string;
@@ -54,16 +61,17 @@ export default function MessagesPage() {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const userChats = Object.entries(data)
-          .filter(([_, chat]: [string, any]) => {
+          .filter(([, chat]) => {
+            const typedChat = chat as Chat;
             return (
-              chat.participants &&
-              chat.participants.includes(character.id) &&
-              chat.participants.length === 2
+              typedChat.participants &&
+              typedChat.participants.includes(character.id) &&
+              typedChat.participants.length === 2
             );
           })
-          .map(([id, chat]: [string, any]) => ({
+          .map(([id, chat]) => ({
+            ...chat as Chat,
             id,
-            ...chat,
           }))
           .filter((chat, index, self) => {
             const otherId = chat.participants.find((p: string) => p !== character.id);
@@ -82,35 +90,22 @@ export default function MessagesPage() {
     return unsubscribe;
   }, [character]);
 
-  // Seleccionar chat por parámetro
-  useEffect(() => {
-    if (!chatParam || !character || !allCharacters) return;
-
-    const existingChat = chats.find(chat =>
-      chat.participants.includes(chatParam) && chat.participants.includes(character.id)
-    );
-
-    if (existingChat) {
-      setSelectedChat(existingChat);
-      return;
-    }
-
-    const targetChar = allCharacters.find(c => c.id === chatParam);
-    if (targetChar) {
-      handleStartChat(targetChar);
-    }
-  }, [chatParam, character, allCharacters, chats]);
-
   // Cargar mensajes del chat seleccionado
   useEffect(() => {
-    if (!selectedChat) return;
+    if (!selectedChat) {
+      setMessages([]);
+      return;
+    }
 
     const messagesRef = ref(db, `chatMessages/${selectedChat.id}`);
     const unsubscribe = onValue(messagesRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const msgs = Object.entries(data)
-          .map(([id, msg]: [string, any]) => ({ id, ...msg }))
+          .map(([id, msg]) => ({ 
+            id, 
+            ...(msg as Omit<Message, 'id'>)
+          }))
           .sort((a, b) => a.timestamp - b.timestamp);
         setMessages(msgs);
       } else {
@@ -129,7 +124,7 @@ export default function MessagesPage() {
     set(unreadRef, 0).catch(console.error);
   }, [selectedChat, character]);
 
-  const handleStartChat = useCallback(async (otherChar: any) => {
+  const handleStartChat = useCallback(async (otherChar: Character) => {
     if (!character) return;
 
     const existingChat = chats.find(chat =>
@@ -179,6 +174,25 @@ export default function MessagesPage() {
     }
   }, [character, chats]);
 
+  // Seleccionar chat por parámetro - MOVIDO DESPUÉS DE handleStartChat
+  useEffect(() => {
+    if (!chatParam || !character || !allCharacters) return;
+
+    const existingChat = chats.find(chat =>
+      chat.participants.includes(chatParam) && chat.participants.includes(character.id)
+    );
+
+    if (existingChat) {
+      setSelectedChat(existingChat);
+      return;
+    }
+
+    const targetChar = allCharacters.find((c: Character) => c.id === chatParam);
+    if (targetChar) {
+      handleStartChat(targetChar);
+    }
+  }, [chatParam, character, allCharacters, chats, handleStartChat]);
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedChat || !character) return;
 
@@ -191,7 +205,7 @@ export default function MessagesPage() {
       };
 
       const messagesRef = ref(db, `chatMessages/${selectedChat.id}`);
-      const newMsgRef = await push(messagesRef, messageData);
+      await push(messagesRef, messageData);
 
       const otherId = selectedChat.participants.find(id => id !== character.id);
       if (otherId) {
@@ -221,7 +235,7 @@ export default function MessagesPage() {
   };
 
   const filteredChars = allCharacters.filter(
-    (char) =>
+    (char: Character) =>
       char.id !== character?.id &&
       (char.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
        char.username?.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -289,7 +303,7 @@ export default function MessagesPage() {
             {searchQuery.trim() && (
               <>
                 <p className="text-xs text-muted-foreground px-2 mb-2 mt-4">Buscar personajes</p>
-                {filteredChars.slice(0, 5).map((char) => (
+                {filteredChars.slice(0, 5).map((char: Character) => (
                   <div
                     key={char.id}
                     className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded cursor-pointer"
