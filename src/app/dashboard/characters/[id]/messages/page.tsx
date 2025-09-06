@@ -66,9 +66,9 @@ export default function MessagesPage() {
             ...chat,
           }))
           .filter((chat, index, self) => {
-            const otherId = chat.participants.find((p) => p !== character.id);
+            const otherId = chat.participants.find((p: string) => p !== character.id);
             return index === self.findIndex((c) => {
-              const cOtherId = c.participants.find((p) => p !== character.id);
+              const cOtherId = c.participants.find((p: string) => p !== character.id);
               return cOtherId === otherId;
             });
           })
