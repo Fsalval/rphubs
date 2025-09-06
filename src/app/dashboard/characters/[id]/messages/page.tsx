@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Send, MoreVertical, MessageSquare } from 'lucide-react';
-import { ref, onValue, push, serverTimestamp, off, set } from 'firebase/database';
+import { ref, onValue, push, serverTimestamp, set } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCharacter } from '../layout';
 
@@ -79,7 +79,7 @@ export default function MessagesPage() {
       setLoading(false);
     });
 
-    return () => off(chatsRef, unsubscribe);
+    return unsubscribe;
   }, [character]);
 
   // Seleccionar chat por parámetro
@@ -118,7 +118,7 @@ export default function MessagesPage() {
       }
     });
 
-    return () => off(messagesRef, unsubscribe);
+    return unsubscribe;
   }, [selectedChat]);
 
   // Marcar como leído
