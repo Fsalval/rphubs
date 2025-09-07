@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Plus, User as UserIcon, Settings, Trash2, Heart, ChevronDown, ChevronUp, Store, Gift } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { ref, onValue, off } from 'firebase/database';
@@ -128,14 +127,6 @@ En RPHubs creemos que el roleplay es un arte que trasciende fronteras. Aquí cad
           <div className="flex gap-4">
             <Button onClick={handleLogout} variant="outline">
               Cerrar Sesión
-            </Button>
-            <Button 
-              onClick={handleAccountClosure} 
-              variant="outline"
-              className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
-            >
-              <Trash2 className="h-4 w-4" />
-              Cerrar Cuenta
             </Button>
           </div>
         </div>

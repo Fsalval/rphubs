@@ -8,23 +8,77 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ThumbsUp, Frown, Laugh, Heart, Eye, Users } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet';
+import { MoreHorizontal, ThumbsUp, Frown, Laugh, Heart, Eye, Users, Menu } from 'lucide-react';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCharacter } from './layout';
 import { sanitize } from '@/lib/sanitize';
 import { ref, push, set , onValue , remove, get } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import { Character } from '@/lib/types';
+import { Character, Post } from '@/lib/types';
+
+// Tipos locales para el feed
+interface FeedPost extends Post {
+  type: 'post';
+  characterId: string;
+  characterName: string;
+  characterUsername: string;
+  characterAvatar: string;
+}
+
+interface FeedTrama {
+  id: string;
+  type: 'trama';
+  name: string;
+  content: string;
+  time: string;
+  visibility: 'public' | 'friends' | 'private';
+  characterId: string;
+  characterName: string;
+  characterUsername: string;
+  characterAvatar: string;
+  tramaId: string;
+  tramaName: string;
+  tramaDescription?: string;
+}
+
+// Tipo para las tramas en la base de datos
+interface TramaFromDB {
+  id: string;
+  name: string;
+  content: string;
+  description?: string;
+  visibility: 'public' | 'friends' | 'private';
+  authorId: string;
+  authorCharName?: string;
+  authorCharHandle?: string;
+  authorCharAvatarUrl?: string;
+  responses?: Record<string, {
+    content: string;
+    createdAt: string;
+    author?: {
+      id: string;
+      name: string;
+      username: string;
+      avatarUrl: string;
+    };
+  }>;
+}
+
+type FeedItem = FeedPost | FeedTrama;
+
+// Helper functions
+const isPost = (item: FeedItem): item is FeedPost => item.type === 'post';
 
 export default function CharacterProfilePage() {
   const { character, isOwner, allCharacters } = useCharacter();
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [content, setContent] = useState('');
   const [editingPost, setEditingPost] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [postVisibility, setPostVisibility] = useState<'public' | 'friends'>('friends');
+  const [activeTab, setActiveTab] = useState<'feed' | 'public-wall'>('feed');
 
   useEffect(() => {
     if (!character?.id) return;
@@ -36,8 +90,8 @@ export default function CharacterProfilePage() {
       if (data) {
         // Convertir objeto en array y agregar el ID
         const postsArray = Object.entries(data)
-          .map(([key, value]: [string, any]) => ({
-            ...value,
+          .map(([key, value]) => ({
+            ...value as Post,
             id: key // asegura que el ID esté presente
           }))
           .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()); // nuevos primero
@@ -162,8 +216,8 @@ export default function CharacterProfilePage() {
   return (
     <div className="space-y-8">
       <div className="grid gap-8 md:grid-cols-12">
-        {/* Barra lateral */}
-        <div className="md:col-span-4 lg:col-span-3 space-y-6">
+        {/* Barra lateral - Visible en desktop, oculta en móvil */}
+        <div className="hidden md:block md:col-span-4 lg:col-span-3 space-y-6">
           {/* About Me */}
           <Card>
             <CardHeader>
@@ -171,7 +225,7 @@ export default function CharacterProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground whitespace-pre-line line-clamp-6">
-                {character.biography || character.profile || 'No hay perfil definido.'}
+                {character?.biography || character?.profile || 'No hay perfil definido.'}
               </p>              
             </CardContent>
           </Card>
@@ -183,7 +237,7 @@ export default function CharacterProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4"> 
               <div className="flex flex-wrap gap-2">
-                {character.tags?.length > 0 ? (
+                {character?.tags?.length > 0 ? (
                   character.tags.map((tag: string, i: number) => (
                     <Badge key={i} variant="secondary" className="text-xs">
                       {tag}
@@ -202,7 +256,7 @@ export default function CharacterProfilePage() {
               <CardTitle>Enlaces</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {character.socialLinks?.length > 0 ? (
+              {character?.socialLinks?.length > 0 ? (
                 character.socialLinks.map((link: { name: string; url: string }, i: number) => (
                   <div key={i}>
                     <a 
@@ -224,11 +278,62 @@ export default function CharacterProfilePage() {
 
         {/* Contenido principal */}
         <div className="md:col-span-8 lg:col-span-9 space-y-6">
-          <Tabs defaultValue="public-wall">
-            <TabsList className="flex justify-center gap-8 border-b border-border pb-2 w-full">
-              <TabsTrigger value="feed">Feed</TabsTrigger>
-              <TabsTrigger value="public-wall">Mi Muro</TabsTrigger>
-            </TabsList>
+          {/* Header con botón sidebar y tabs alineados */}
+          <div className="flex items-center justify-between">
+            {/* Botón para abrir sidebar en móvil */}
+            <div className="md:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-80">
+                  <SheetHeader>
+                    <SheetTitle>Perfil de {character?.name}</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6">
+                    <SidebarContent character={character} />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            {/* Tabs alineados con el botón del menú - Solo móvil */}
+            <div className="flex-1 flex justify-center md:hidden">
+              <div className="flex gap-8">
+                <button 
+                  onClick={() => setActiveTab('feed')}
+                  className={`text-sm font-medium border-b-2 pb-2 ${
+                    activeTab === 'feed' 
+                      ? 'border-primary text-primary' 
+                      : 'border-transparent hover:border-primary text-muted-foreground'
+                  }`}
+                >
+                  Feed
+                </button>
+                <button 
+                  onClick={() => setActiveTab('public-wall')}
+                  className={`text-sm font-medium border-b-2 pb-2 ${
+                    activeTab === 'public-wall' 
+                      ? 'border-primary text-primary' 
+                      : 'border-transparent hover:border-primary text-muted-foreground'
+                  }`}
+                >
+                  Mi Muro
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'feed' | 'public-wall')}>
+            {/* Tabs originales - Solo desktop */}
+            <div className="hidden md:block">
+              <TabsList className="flex justify-center gap-8 border-b border-border pb-2 w-full">
+                <TabsTrigger value="feed">Feed</TabsTrigger>
+                <TabsTrigger value="public-wall">Mi Muro</TabsTrigger>
+              </TabsList>
+            </div>
 
             {/* Muro Público */}
             <TabsContent value="public-wall">
@@ -404,10 +509,31 @@ export default function CharacterProfilePage() {
 }
 
 // Componente para el Feed
-function FeedContent({ character, allCharacters }: { character: any, allCharacters: any }) {
+function FeedContent({ character, allCharacters }: { character: Character, allCharacters: Record<string, Character> }) {
   const [friends, setFriends] = useState<string[]>([]);
-  const [feedItems, setFeedItems] = useState<any[]>([]);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Función para manejar reacciones en el feed
+  const handleFeedReaction = async (item: FeedItem, reactionType: 'likes' | 'hearts' | 'heartbreaks' | 'laughs') => {
+    if (item.type !== 'post') return; // Solo posts tienen reacciones
+
+    try {
+      const currentCount = item[reactionType] || 0;
+      const newCount = currentCount + 1;
+      
+      await set(ref(db, `characters/${item.characterId}/posts/${item.id.replace(/^(own-post-|friend-post-.*-)/, '')}/${reactionType}`), newCount);
+
+      // Actualizar estado local
+      setFeedItems(feedItems.map(feedItem => 
+        feedItem.id === item.id 
+          ? { ...feedItem, [reactionType]: newCount }
+          : feedItem
+      ));
+    } catch (error) {
+      console.error('Error al actualizar reacción en feed:', error);
+    }
+  };
 
   // Obtener amigos
   useEffect(() => {
@@ -429,46 +555,48 @@ function FeedContent({ character, allCharacters }: { character: any, allCharacte
     const loadFeed = async () => {
       setLoading(true);
       try {
-        const items: any[] = [];
+        const items: FeedItem[] = [];
 
         // 1. Tus propios posts
         const ownPostsRef = ref(db, `characters/${character.id}/posts`);
         const ownPostsSnap = await get(ownPostsRef);
         if (ownPostsSnap.exists()) {
           const postsData = ownPostsSnap.val();
-          Object.entries(postsData).forEach(([postId, post]: [string, any]) => {
+          Object.entries(postsData).forEach(([postId, post]) => {
+            const postData = post as Post;
             items.push({
+              ...postData,
               id: `own-post-${postId}`,
-              type: 'post',
-              ...post,
+              type: 'post' as const,
               characterName: character.name,
               characterUsername: character.username,
               characterAvatar: character.avatarUrl,
               characterId: character.id,
-            });
+            } as FeedPost);
           });
         }
 
         // 2. Posts de amigos
         for (const friendId of friends) {
-          const friend = allCharacters.find((c: Character) => c.id === friendId);
+          const friend = Object.values(allCharacters).find((c: Character) => c.id === friendId);
           if (!friend) continue;
 
           const friendPostsRef = ref(db, `characters/${friendId}/posts`);
           const friendPostsSnap = await get(friendPostsRef);
           if (friendPostsSnap.exists()) {
             const postsData = friendPostsSnap.val();
-            Object.entries(postsData).forEach(([postId, post]: [string, any]) => {
-              if (post.visibility === 'public' || (post.visibility === 'friends' && friends.includes(friendId))) {
+            Object.entries(postsData).forEach(([postId, post]) => {
+              const postData = post as Post;
+              if (postData.visibility === 'public' || (postData.visibility === 'friends' && friends.includes(friendId))) {
                 items.push({
+                  ...postData,
                   id: `friend-post-${friendId}-${postId}`,
-                  type: 'post',
-                  ...post,
+                  type: 'post' as const,
                   characterName: friend.name,
                   characterUsername: friend.username,
                   characterAvatar: friend.avatarUrl,
                   characterId: friendId,
-                });
+                } as FeedPost);
               }
             });
           }
@@ -479,47 +607,49 @@ function FeedContent({ character, allCharacters }: { character: any, allCharacte
         const tramasSnap = await get(tramasRef);
         if (tramasSnap.exists()) {
           const tramasData = tramasSnap.val();
-          Object.entries(tramasData).forEach(([tramaId, trama]: [string, any]) => {
-            const authorId = trama.authorId;
+          Object.entries(tramasData).forEach(([tramaId, trama]) => {
+            const tramaData = trama as TramaFromDB;
+            const authorId = tramaData.authorId;
             const isOwnTrama = authorId === character.id;
             const isFriendTrama = friends.includes(authorId);
-            const isParticipant = trama.responses && Object.values(trama.responses).some((response: any) => response.author?.id === character.id);
+            const isParticipant = tramaData.responses && Object.values(tramaData.responses).some((response) => response.author?.id === character.id);
 
             if (
-              (trama.visibility === 'public') ||
-              (trama.visibility === 'friends' && (isOwnTrama || isFriendTrama)) ||
-              (trama.visibility === 'private' && isOwnTrama) ||
+              (tramaData.visibility === 'public') ||
+              (tramaData.visibility === 'friends' && (isOwnTrama || isFriendTrama)) ||
+              (tramaData.visibility === 'private' && isOwnTrama) ||
               isParticipant
             ) {
               // Obtener la respuesta más reciente
-              const responses = Object.entries(trama.responses || {})
-                .map(([responseId, response]: [string, any]) => ({
+              const responses = Object.entries(tramaData.responses || {})
+                .map(([responseId, response]) => ({
                   ...response,
                   id: responseId
                 }))
-                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
               const latestResponse = responses[0];
 
               if (latestResponse && latestResponse.createdAt) {
                 // Buscar información del autor de la respuesta
-                const responseAuthor = allCharacters.find((c: Character) => c.id === latestResponse.author?.id);
+                const responseAuthor = Object.values(allCharacters).find((c: Character) => c.id === latestResponse.author?.id);
                 
                 if (responseAuthor) {
                   items.push({
                     id: `trama-${tramaId}-response-${latestResponse.id}`,
-                    type: 'trama',
-                    content: `📖 Nueva respuesta en "${trama.name}"\n\n${latestResponse.content.substring(0, 150)}...`,
+                    type: 'trama' as const,
+                    name: tramaData.name,
+                    content: `📖 Nueva respuesta en "${tramaData.name}"\n\n${latestResponse.content.substring(0, 150)}...`,
                     time: latestResponse.createdAt,
-                    visibility: trama.visibility,
+                    visibility: tramaData.visibility,
                     characterName: responseAuthor.name,
                     characterUsername: responseAuthor.username,
                     characterAvatar: responseAuthor.avatarUrl,
                     characterId: responseAuthor.id,
                     tramaId,
-                    tramaName: trama.name,
-                    tramaDescription: trama.description,
-                  });
+                    tramaName: tramaData.name,
+                    tramaDescription: tramaData.description,
+                  } as FeedTrama);
                 }
               }
             }
@@ -592,7 +722,7 @@ function FeedContent({ character, allCharacters }: { character: any, allCharacte
                   </Link>
                   <p className="text-sm text-muted-foreground">@{item.characterUsername}</p>
                   <p className="text-sm text-muted-foreground">&middot;</p>
-                  <p className="text-sm text-muted-foreground">{getTimeAgo(item.time)}</p>
+                  <p className="text-sm text-muted-foreground">{getTimeAgo(String(item.time))}</p>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     {item.visibility === 'public' ? <Eye className="h-3 w-3" /> : <Users className="h-3 w-3" />}
                     <span>{item.visibility === 'public' ? 'Público' : 'Amigos'}</span>
@@ -618,22 +748,108 @@ function FeedContent({ character, allCharacters }: { character: any, allCharacte
               </div>
             </div>
           </CardHeader>
-          <div className="px-6 pb-6 flex justify-around text-muted-foreground border-t pt-2">
-            <Button variant="ghost" size="sm" className="flex items-center gap-2 hover:text-blue-500">
-              <ThumbsUp className="h-4 w-4" /> {item.likes || 0}
-            </Button>
-            <Button variant="ghost" size="sm" className="flex items-center gap-2 hover:text-red-500">
-              <Heart className="h-4 w-4" /> {item.hearts || 0}
-            </Button>
-            <Button variant="ghost" size="sm" className="flex items-center gap-2 hover:text-orange-500">
-              <Frown className="h-4 w-4" /> {item.heartbreaks || 0}
-            </Button>
-            <Button variant="ghost" size="sm" className="flex items-center gap-2 hover:text-yellow-500">
-              <Laugh className="h-4 w-4" /> {item.laughs || 0}
-            </Button>
-          </div>
+          {isPost(item) && (
+            <div className="px-6 pb-6 flex justify-around text-muted-foreground border-t pt-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="flex items-center gap-2 hover:text-blue-500"
+                onClick={() => handleFeedReaction(item, 'likes')}
+              >
+                <ThumbsUp className="h-4 w-4" /> {item.likes || 0}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="flex items-center gap-2 hover:text-red-500"
+                onClick={() => handleFeedReaction(item, 'hearts')}
+              >
+                <Heart className="h-4 w-4" /> {item.hearts || 0}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="flex items-center gap-2 hover:text-orange-500"
+                onClick={() => handleFeedReaction(item, 'heartbreaks')}
+              >
+                <Frown className="h-4 w-4" /> {item.heartbreaks || 0}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="flex items-center gap-2 hover:text-yellow-500"
+                onClick={() => handleFeedReaction(item, 'laughs')}
+              >
+                <Laugh className="h-4 w-4" /> {item.laughs || 0}
+              </Button>
+            </div>
+          )}
         </Card>
       ))}
+    </div>
+  );
+}
+
+// Componente para el contenido del sidebar
+function SidebarContent({ character }: { character: Character }) {
+  return (
+    <div className="space-y-6">
+      {/* About Me */}
+      <Card>
+        <CardHeader>
+          <CardTitle>About me</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground whitespace-pre-line line-clamp-6">
+            {character?.biography || character?.profile || 'No hay perfil definido.'}
+          </p>              
+        </CardContent>
+      </Card>
+      
+      {/* Etiquetas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Etiquetas</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4"> 
+          <div className="flex flex-wrap gap-2">
+            {character?.tags && character.tags.length > 0 ? (
+              character.tags.map((tag: string, i: number) => (
+                <Badge key={i} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No hay etiquetas definidas.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Enlaces sociales */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Enlaces</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {character?.socialLinks && character.socialLinks.length > 0 ? (
+            character.socialLinks.map((link: { name: string; url: string }, i: number) => (
+              <div key={i}>
+                <a 
+                  href={link.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline block text-sm"
+                >
+                  {link.name}
+                </a>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">No hay enlaces definidos.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

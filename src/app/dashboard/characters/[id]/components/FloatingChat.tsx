@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Send, MessageSquare, X, Minus } from 'lucide-react';
-import { ref, onValue, push, serverTimestamp, get, off } from 'firebase/database';
+import { ref, onValue, push, serverTimestamp, set } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCharacter } from '../layout';
 import { Character } from '@/lib/types';
@@ -35,9 +35,8 @@ interface Chat {
 }
 
 export default function FloatingChat() {
-  const { character, allCharacters } = useCharacter() as {
+  const { character } = useCharacter() as {
     character: Character | null;
-    allCharacters: Character[];
   };
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -50,8 +49,9 @@ export default function FloatingChat() {
 
   // Escuchar evento para abrir chat específico
   useEffect(() => {
-    const handleOpenChat = (event: any) => {
-      const { targetCharacterId } = event.detail;
+    const handleOpenChat = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { targetCharacterId } = customEvent.detail;
       if (targetCharacterId) {
         // Busca el chat existente o crea uno nuevo
         const existingChat = chats.find(chat => chat.participants.includes(targetCharacterId));
@@ -79,17 +79,23 @@ export default function FloatingChat() {
       const chatsData = snapshot.val();
       if (chatsData) {
         const userChats = Object.entries(chatsData)
-          .filter(([_, chat]: any) => chat.participants?.includes(character.id))
-          .map(([id, chat]: any) => ({
-            id,
-            ...chat,
-          }))
-          .sort((a: any, b: any) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
+          .filter(([, chatData]) => {
+            const chat = chatData as Chat;
+            return chat.participants?.includes(character.id);
+          })
+          .map(([id, chatData]) => {
+            const chat = chatData as Chat;
+            return {
+              ...chat,
+              id: id, // override con el id de Firebase
+            };
+          })
+          .sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
 
         setChats(userChats);
 
         // Calcular total de mensajes no leídos
-        const totalUnread = userChats.reduce((total: number, chat: any) => {
+        const totalUnread = userChats.reduce((total: number, chat) => {
           return total + (chat.unreadCount?.[character.id] || 0);
         }, 0);
         setUnreadTotal(totalUnread);
@@ -108,11 +114,14 @@ export default function FloatingChat() {
       const messagesData = snapshot.val();
       if (messagesData) {
         const messagesList = Object.entries(messagesData)
-          .map(([id, message]: any) => ({
-            id,
-            ...message,
-          }))
-          .sort((a: any, b: any) => a.timestamp - b.timestamp);
+          .map(([id, messageData]) => {
+            const message = messageData as Message;
+            return {
+              ...message,
+              id: id, // override con el id de Firebase
+            };
+          })
+          .sort((a, b) => a.timestamp - b.timestamp);
         setMessages(messagesList);
       } else {
         setMessages([]);
@@ -131,7 +140,6 @@ export default function FloatingChat() {
     if (!newMessage.trim() || !selectedChat || !character) return;
 
     const messagesRef = ref(db, `chatMessages/${selectedChat.id}`);
-    const chatRef = ref(db, `chats/${selectedChat.id}`);
 
     const messageData = {
       senderId: character.id,
@@ -143,14 +151,19 @@ export default function FloatingChat() {
     try {
       await push(messagesRef, messageData);
 
-      // Actualizar info del chat
+      // Actualizar info del chat usando set en lugar de push para evitar problemas con las claves
       const otherParticipantId = selectedChat.participants.find((p) => p !== character.id);
       if (otherParticipantId) {
-        await push(chatRef, {
-          lastMessage: newMessage.trim(),
-          lastMessageTime: Date.now(),
-          [`unreadCount/${otherParticipantId}`]: (selectedChat.unreadCount?.[otherParticipantId] || 0) + 1,
-        });
+        // Actualizar último mensaje y tiempo
+        const lastMessageRef = ref(db, `chats/${selectedChat.id}/lastMessage`);
+        const lastMessageTimeRef = ref(db, `chats/${selectedChat.id}/lastMessageTime`);
+        const unreadCountRef = ref(db, `chats/${selectedChat.id}/unreadCount/${otherParticipantId}`);
+
+        await Promise.all([
+          set(lastMessageRef, newMessage.trim()),
+          set(lastMessageTimeRef, Date.now()),
+          set(unreadCountRef, (selectedChat.unreadCount?.[otherParticipantId] || 0) + 1)
+        ]);
       }
 
       setNewMessage('');
@@ -208,8 +221,12 @@ export default function FloatingChat() {
 
       {/* Ventana de chat */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <Card className={`w-80 shadow-xl transition-all duration-200 ${isMinimized ? 'h-14' : 'h-96'}`}>
+        <div className="fixed inset-0 md:bottom-6 md:right-6 md:inset-auto z-50">
+          <Card className={`
+            w-full h-full md:w-80 md:h-96 shadow-xl transition-all duration-200 
+            ${isMinimized ? 'md:h-14 h-14' : 'h-full md:h-96'}
+            md:rounded-lg rounded-none
+          `}>
             <CardHeader className="p-3 border-b">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm">
@@ -229,7 +246,7 @@ export default function FloatingChat() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsMinimized(!isMinimized)}
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 hidden md:flex"
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
@@ -246,7 +263,7 @@ export default function FloatingChat() {
             </CardHeader>
 
             {!isMinimized && (
-              <CardContent className="p-0 h-80 flex flex-col">
+              <CardContent className="p-0 flex flex-col h-[calc(100%-4rem)]">
                 {!selectedChat ? (
                   /* Lista de chats */
                   <ScrollArea className="flex-1 p-3">
@@ -291,8 +308,8 @@ export default function FloatingChat() {
                   </ScrollArea>
                 ) : (
                   /* Vista de mensajes */
-                  <>
-                    <div className="p-2 border-b">
+                  <div className="flex flex-col h-full">
+                    <div className="p-2 border-b shrink-0">
                       <Button variant="ghost" size="sm" onClick={() => setSelectedChat(null)} className="text-xs">
                         ← Volver a chats
                       </Button>
@@ -318,7 +335,7 @@ export default function FloatingChat() {
                       </div>
                     </ScrollArea>
 
-                    <div className="p-3 border-t">
+                    <div className="p-3 border-t shrink-0">
                       <div className="flex gap-2">
                         <Input
                           value={newMessage}
@@ -332,7 +349,7 @@ export default function FloatingChat() {
                         </Button>
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
               </CardContent>
             )}

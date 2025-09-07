@@ -7,10 +7,11 @@ import { auth, db } from '@/lib/firebase';
 import { ref, onValue, get, set, remove } from 'firebase/database';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
-import { Search, Settings, Bell, Mail, Palette, Home } from 'lucide-react';
+import { Search, Settings, Bell, Mail, Palette, Home, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet';
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { useTheme, type Theme } from '@/lib/theme-context';
 import { Character } from '@/lib/types';
@@ -201,22 +202,24 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
 
   return (
     <CharacterContext.Provider value={{ character, isOwner, allCharacters, newMessagesCount, updateCharacterData }}>
-      <div className="min-h-screen bg-secondary">
+      <div className="min-h-screen bg-secondary flex flex-col">
         {/* Header */}
         <header className="bg-background/80 backdrop-blur-sm sticky top-0 z-20 border-b">
           <div className="container mx-auto px-4">
             <div className="flex h-16 items-center justify-between gap-4">
+              {/* Avatar y nombre - Siempre visible */}
               <div className="flex items-center gap-4 flex-shrink-0">
                 <Avatar>
                   <AvatarImage src={character.avatarUrl} alt={character.name} />
                   <AvatarFallback>{character.name.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="hidden sm:block">
                   <h1 className="text-xl font-bold">{character.name}</h1>
                   <p className="text-sm text-muted-foreground">@{character.username}</p>
                 </div>
               </div>
 
+              {/* Barra de búsqueda - Visible en todas las pantallas */}
               <div className="flex-1 min-w-0 px-4 relative">
                 <div className="relative max-w-md mx-auto">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -230,8 +233,9 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                {/* Notificaciones (campana) */}
+              {/* Botones de acción */}
+              <div className="flex items-center gap-2">
+                {/* Notificaciones y Mensajes - Siempre visibles */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="relative">
@@ -244,7 +248,7 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-80">
-                    <DropdownMenuLabel> solicitudes de amistad</DropdownMenuLabel>
+                    <DropdownMenuLabel>Solicitudes de amistad</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {notifications.length === 0 ? (
                       <DropdownMenuItem>No tienes solicitudes nuevas</DropdownMenuItem>
@@ -284,7 +288,6 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Mensajes nuevos */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="relative">
@@ -318,52 +321,163 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Configuración */}
-                <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                    <Settings className="h-5 w-5" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuLabel className="flex items-center gap-2">
-                      <Palette className="h-4 w-4" />
-                      Temas
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {availableThemes.map((t) => (
-                      <DropdownMenuItem
-                        key={t.id}
-                        onClick={() => setTheme(t.id)}
-                        className="flex items-center gap-3"
-                      >
-                        <div 
-                          className="w-4 h-4 rounded-full border border-border"
-                          style={{ backgroundColor: t.colors.accent }}
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span>{t.name}</span>
-                            {t.isPremium && (
-                              <Badge variant="secondary" className="text-xs">Premium</Badge>
-                            )}
-                            {theme === t.id && (
-                              <Badge variant="default" className="text-xs">Activo</Badge>
-                            )}
+                {/* Configuración - Solo desktop, en móvil va al drawer */}
+                <div className="hidden md:block">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                        <Settings className="h-5 w-5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel className="flex items-center gap-2">
+                          <Palette className="h-4 w-4" />
+                          Temas
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {availableThemes.map((t) => (
+                          <DropdownMenuItem
+                            key={t.id}
+                            onClick={() => setTheme(t.id)}
+                            className="flex items-center gap-3"
+                          >
+                            <div 
+                              className="w-4 h-4 rounded-full border border-border"
+                              style={{ backgroundColor: t.colors.accent }}
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span>{t.name}</span>
+                                {t.isPremium && (
+                                  <Badge variant="secondary" className="text-xs">Premium</Badge>
+                                )}
+                                {theme === t.id && (
+                                  <Badge variant="default" className="text-xs">Activo</Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">{t.description}</p>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                          <Link href="/dashboard/characters" className="w-full flex items-center gap-2">
+                            <Home className="h-4 w-4" />
+                            Salir del personaje
+                          </Link>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Menú móvil - Solo para navegación y configuración */}
+                <div className="md:hidden">
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <Menu className="h-5 w-5" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-80">
+                      <SheetHeader>
+                        <SheetTitle>{character.name}</SheetTitle>
+                        <p className="text-sm text-muted-foreground">@{character.username}</p>
+                      </SheetHeader>
+                      <div className="mt-6 space-y-6">
+                        {/* Navegación móvil */}
+                        <div className="space-y-2">
+                          <h3 className="text-sm font-medium">Navegación</h3>
+                          <div className="space-y-1">
+                            <Link
+                              href={`/dashboard/characters/${characterId}`}
+                              className={`flex items-center gap-2 p-2 rounded-md transition-colors ${
+                                pathname === `/dashboard/characters/${characterId}`
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'hover:bg-muted'
+                              }`}
+                            >
+                              <Home className="h-4 w-4" />
+                              <span className="text-sm">Perfil</span>
+                            </Link>
+                            <Link
+                              href={`/dashboard/characters/${characterId}/ficha`}
+                              className={`flex items-center gap-2 p-2 rounded-md transition-colors ${
+                                pathname === `/dashboard/characters/${characterId}/ficha`
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'hover:bg-muted'
+                              }`}
+                            >
+                              <span className="text-sm">Ficha</span>
+                            </Link>
+                            <Link
+                              href={`/dashboard/characters/${characterId}/tramas`}
+                              className={`flex items-center gap-2 p-2 rounded-md transition-colors ${
+                                pathname === `/dashboard/characters/${characterId}/tramas`
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'hover:bg-muted'
+                              }`}
+                            >
+                              <span className="text-sm">Tramas</span>
+                            </Link>
+                            <Link
+                              href={`/dashboard/characters/${characterId}/taller`}
+                              className={`flex items-center gap-2 p-2 rounded-md transition-colors ${
+                                pathname === `/dashboard/characters/${characterId}/taller`
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'hover:bg-muted'
+                              }`}
+                            >
+                              <span className="text-sm">Taller</span>
+                            </Link>
+                            <Link
+                              href={`/dashboard/characters/${characterId}/amigos`}
+                              className={`flex items-center gap-2 p-2 rounded-md transition-colors ${
+                                pathname === `/dashboard/characters/${characterId}/amigos`
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'hover:bg-muted'
+                              }`}
+                            >
+                              <span className="text-sm">Amigos</span>
+                            </Link>
+                            <Link
+                              href={`/dashboard/characters/${characterId}/messages`}
+                              className={`flex items-center gap-2 p-2 rounded-md transition-colors relative ${
+                                pathname === `/dashboard/characters/${characterId}/messages`
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'hover:bg-muted'
+                              }`}
+                            >
+                              <Mail className="h-4 w-4" />
+                              <span className="text-sm">Mensajes</span>
+                              {newMessagesCount > 0 && (
+                                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">
+                                  {newMessagesCount}
+                                </span>
+                              )}
+                            </Link>
                           </div>
-                          <p className="text-xs text-muted-foreground">{t.description}</p>
                         </div>
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem>
-                      <Link href="/dashboard/characters" className="w-full flex items-center gap-2">
-                        <Home className="h-4 w-4" />
-                        Salir del personaje
-                      </Link>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-                </DropdownMenu>
+
+                        {/* Configuración móvil */}
+                        <div className="space-y-2">
+                          <h3 className="text-sm font-medium flex items-center gap-2">
+                            <Settings className="h-4 w-4" />
+                            Configuración
+                          </h3>
+                          <div className="space-y-2">
+                            <Link 
+                              href="/dashboard/characters" 
+                              className="flex items-center gap-2 p-2 hover:bg-muted rounded-md transition-colors"
+                            >
+                              <Home className="h-4 w-4" />
+                              <span className="text-sm">Salir del personaje</span>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                </div>
               </div>
             </div>
 
@@ -404,8 +518,8 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* Menú de navegación */}
-        <nav className="bg-background border-b sticky top-16 z-10">
+        {/* Menú de navegación - Solo desktop */}
+        <nav className="hidden md:block bg-background border-b sticky top-16 z-10">
           <div className="container mx-auto px-4">
             <div className="flex justify-center gap-8 py-2">
               <Link
@@ -478,7 +592,7 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* Contenido */}
-        <main className="container mx-auto p-6">
+        <main className="container mx-auto p-6 flex-1">
           {children}
         </main>
 
