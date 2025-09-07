@@ -11,6 +11,7 @@ export interface SocialLink {
  * Información básica del autor
  */
 export interface Author {
+  id?: string;
   name: string;
   username: string;
   avatarUrl: string;
@@ -45,6 +46,8 @@ export interface Story {
   collaborators: string[];
   responses?: Record<string, StoryResponse>;
   responseConfig?: ResponseConfig;
+  tags?: string[];
+  imageUrl?: string;
 }
 
 /**

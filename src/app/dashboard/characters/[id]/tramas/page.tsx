@@ -8,7 +8,8 @@ import { Input} from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Users, MessageSquare, MoreHorizontal, Edit3, CheckCircle, BookOpen, Upload, X } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet';
+import { Plus, Users, MessageSquare, MoreHorizontal, Edit3, CheckCircle, BookOpen, Upload, X, Menu } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCharacter } from '../layout';
@@ -67,6 +68,7 @@ export default function TramasPage() {
   const [responseTexts, setResponseTexts] = useState<{[key: string]: string}>({});
   const [scrollTarget, setScrollTarget] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'public' | 'friends' | 'private' | 'collaborations'>('all');
+  const [isIndexOpen, setIsIndexOpen] = useState(false);
   // Filtrado por visibilidad
   let visibleTramas = tramas;
   if (activeTab === 'public') {
@@ -247,8 +249,77 @@ export default function TramasPage() {
     : [];
   return (
     <div className="flex gap-6 h-screen overflow-hidden">
-      {/* Menú lateral */}
-      <div className="w-80 flex-shrink-0">
+      {/* Mobile Index Trigger */}
+      <Sheet open={isIndexOpen} onOpenChange={setIsIndexOpen}>
+        <SheetTrigger asChild>
+          <button className="fixed top-24 left-4 z-50 lg:hidden p-2 bg-background border rounded-lg shadow-lg">
+            <Menu className="w-6 h-6" />
+          </button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-80 p-0">
+          <SheetHeader className="p-6 pb-2">
+            <SheetTitle>Índice de Tramas</SheetTitle>
+          </SheetHeader>
+          <div className="px-6 pb-6">
+            <ScrollArea className="h-96">
+              <div className="space-y-2">
+                {visibleTramas.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No hay tramas en esta categoría
+                  </p>
+                ) : (
+                  visibleTramas.map((trama) => (
+                    <div
+                      key={trama.id}
+                      className="p-3 rounded-lg border hover:bg-muted cursor-pointer transition-colors"
+                      onClick={() => {
+                        setScrollTarget(trama.id);
+                        setIsIndexOpen(false);
+                      }}
+                    >
+                      <h4 className="font-medium text-sm leading-tight mb-1">{trama.name}</h4>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {(trama.tags ?? []).slice(0, 3).map((tag: string) => (
+                          <span key={tag} className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                      {activeTab === 'collaborations' && (
+                        <p className="text-xs text-muted-foreground">Por: {trama.author.name}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          trama.status === 'finished' ? 'bg-green-100 text-green-700' :
+                          trama.status === 'in-progress' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {trama.status === 'finished' ? 'Finalizada' :
+                           trama.status === 'in-progress' ? 'En proceso' : 'Pendiente'}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(trama.time).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {tramaResponses[trama.id]?.length > 0 && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {tramaResponses[trama.id].length} respuesta{tramaResponses[trama.id].length !== 1 ? 's' : ''}
+                          {tramaResponses[trama.id].length >= 10 && (
+                            <span className="ml-2 text-primary font-medium">• Elegible para capítulos</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Desktop Side Menu */}
+      <div className="hidden lg:block lg:w-80 flex-shrink-0">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Índice de Tramas</CardTitle>

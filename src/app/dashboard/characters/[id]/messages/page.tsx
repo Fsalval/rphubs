@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Send, MoreVertical, MessageSquare } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet';
+import { Send, MoreVertical, MessageSquare, Menu } from 'lucide-react';
 import { ref, onValue, push, serverTimestamp, set } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCharacter } from '../layout';
@@ -52,6 +53,7 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isChatListOpen, setIsChatListOpen] = useState(false);
 
   // Cargar chats
   useEffect(() => {
@@ -252,8 +254,107 @@ export default function MessagesPage() {
 
   return (
     <div className="flex h-[calc(100vh-12rem)]">
-      {/* Sidebar */}
-      <div className="w-80 border-r flex flex-col bg-gray-50">
+      {/* Mobile Chat List Trigger */}
+      <Sheet open={isChatListOpen} onOpenChange={setIsChatListOpen}>
+        <SheetTrigger asChild>
+          <button className="fixed top-24 left-4 z-50 lg:hidden p-2 bg-background border rounded-lg shadow-lg">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </SheetTrigger>
+        
+        <SheetContent side="left" className="w-80 p-0">
+          <SheetHeader className="p-4 border-b">
+            <SheetTitle>Conversaciones</SheetTitle>
+            <Input
+              placeholder="Buscar personajes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="text-sm"
+            />
+          </SheetHeader>
+
+          <ScrollArea className="flex-1">
+            <div className="p-2">
+              <p className="text-xs text-muted-foreground px-2 mb-2">Chats</p>
+              {chats.map((chat) => {
+                const other = getOtherParticipant(chat);
+                const unreadCount = chat.unreadCount?.[character?.id || ''] || 0;
+
+                return (
+                  <div
+                    key={chat.id}
+                    className={`flex items-center gap-3 p-2 rounded cursor-pointer ${
+                      selectedChat?.id === chat.id ? 'bg-primary text-primary-foreground' : 'hover:bg-gray-100'
+                    }`}
+                    onClick={() => {
+                      setSelectedChat(chat);
+                      setIsChatListOpen(false);
+                    }}
+                  >
+                    <Avatar className="w-10 h-10">
+                      <AvatarImage src={other.avatarUrl} alt={other.name} />
+                      <AvatarFallback className="text-sm font-bold">
+                        {other.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <Link 
+                          href={`/characters/${other.id}`}
+                          className="text-sm font-medium truncate hover:text-primary transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {other.name}
+                        </Link>
+                        {unreadCount > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            {unreadCount}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {chat.lastMessage || 'Iniciar conversación'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {searchQuery.trim() && (
+                <>
+                  <p className="text-xs text-muted-foreground px-2 mb-2 mt-4">Buscar personajes</p>
+                  {filteredChars.slice(0, 5).map((char: Character) => (
+                    <div
+                      key={char.id}
+                      className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded cursor-pointer"
+                      onClick={() => {
+                        handleStartChat(char);
+                        setIsChatListOpen(false);
+                      }}
+                    >
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={char.avatarUrl} alt={char.name} />
+                        <AvatarFallback className="text-sm font-bold">
+                          {char.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{char.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">@{char.username}</p>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex lg:w-80 border-r flex-col bg-gray-50">
         <div className="p-4 border-b">
           <Input
             placeholder="Buscar personajes..."

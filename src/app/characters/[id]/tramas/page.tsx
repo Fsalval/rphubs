@@ -3,17 +3,20 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BookOpen, Users, Eye } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { BookOpen, Users, Eye, MessageSquare } from 'lucide-react';
 import { usePublicCharacter } from '../layout';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, push, get, update } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import { Story } from '@/lib/types'; // ✅ Importa el tipo
+import { Story } from '@/lib/types';
 
 export default function PublicTramasPage() {
-  const { character, currentUserCharacter, isFriend } = usePublicCharacter(); // ✅ 'user' eliminado
+  const { character, currentUserCharacter, isFriend } = usePublicCharacter();
   
   const [tramas, setTramas] = useState<Story[]>([]);
   const [tramaResponses, setTramaResponses] = useState<Record<string, Story[]>>({});
+  const [responseTexts, setResponseTexts] = useState<Record<string, string>>({});
   const [scrollTarget, setScrollTarget] = useState<string | null>(null);
 
   // Cargar tramas
@@ -24,7 +27,7 @@ export default function PublicTramasPage() {
       const data = snapshot.val();
       if (data) {
         const tramasArray = Object.entries(data)
-          .map(([key, value]: [string, any]) => ({ ...value, id: key })) // ✅ any en el map, pero el resultado es Story
+          .map(([key, value]: [string, unknown]) => ({ ...(value as Story), id: key }))
           .filter((trama: Story) => {
             // ✅ Ahora `trama` tiene tipo
             if (trama.visibility === 'public') return true;
@@ -51,7 +54,7 @@ export default function PublicTramasPage() {
         const data = snapshot.val();
         if (data) {
           const responsesArray = Object.entries(data)
-            .map(([key, value]: [string, any]) => ({ ...value, id: key }))
+            .map(([key, value]: [string, unknown]) => ({ ...(value as Story), id: key }))
             .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
           setTramaResponses(prev => ({ ...prev, [trama.id]: responsesArray as Story[] }));
         } else {
@@ -101,6 +104,62 @@ export default function PublicTramasPage() {
       case 'finished': return 'Finalizada';
       case 'in-progress': return 'En proceso';
       default: return 'Pendiente';
+    }
+  };
+
+  // Función para agregar respuestas a las tramas
+  const handleAddResponse = async (tramaId: string) => {
+    if (!responseTexts[tramaId]?.trim() || !currentUserCharacter) return;
+
+    const newResponse = {
+      author: {
+        id: currentUserCharacter.id,
+        name: currentUserCharacter.name,
+        username: currentUserCharacter.username,
+        avatarUrl: currentUserCharacter.avatarUrl,
+      },
+      content: responseTexts[tramaId].trim(),
+      time: new Date().toISOString(),
+    };
+
+    try {
+      // Guardar la respuesta en Firebase
+      const responsesRef = ref(db, `characters/${character!.id}/tramas/${tramaId}/responses`);
+      await push(responsesRef, newResponse);
+      
+      // Agregar al usuario como colaborador si no lo es ya
+      const tramaRef = ref(db, `characters/${character!.id}/tramas/${tramaId}`);
+      const tramaSnapshot = await get(tramaRef);
+      const tramaData = tramaSnapshot.val();
+      
+      if (tramaData) {
+        // Inicializar colaboradores si no existen
+        const currentCollaborators = tramaData.collaborators || [];
+        
+        if (!currentCollaborators.includes(currentUserCharacter.id)) {
+          const updatedCollaborators = [...currentCollaborators, currentUserCharacter.id];
+          await update(tramaRef, { 
+            collaborators: updatedCollaborators,
+            participants: updatedCollaborators.length
+          });
+          
+          // ✅ NUEVO: También crear una referencia en las tramas del usuario que responde
+          if (character!.id !== currentUserCharacter.id) {
+            const userTramaRef = ref(db, `characters/${currentUserCharacter.id}/tramas/${tramaId}`);
+            await update(userTramaRef, {
+              ...tramaData,
+              collaborators: updatedCollaborators,
+              participants: updatedCollaborators.length,
+              isCollaboration: true // Marcamos que es una colaboración
+            });
+          }
+        }
+      }
+      
+      // Limpiar el campo de texto
+      setResponseTexts(prev => ({ ...prev, [tramaId]: '' }));
+    } catch (error) {
+      console.error('Error al guardar la respuesta:', error);
     }
   };
 
@@ -242,6 +301,76 @@ export default function PublicTramasPage() {
                         )}
                       </div>
                     )}
+
+                    {/* Campo de respuesta - Solo visible si el usuario tiene permisos */}
+                    {currentUserCharacter && (() => {
+                      // Función para verificar si el usuario puede responder a esta trama
+                      const canRespond = () => {
+                        if (!trama.responseConfig) return true; // Si no hay configuración, permite respuestas
+                        
+                        switch (trama.responseConfig) {
+                          case 'anyone':
+                            return true;
+                          case 'friends':
+                            // Verificar si es el autor o si son amigos
+                            return trama.author?.username === currentUserCharacter.username || 
+                                   (trama.author?.id && currentUserCharacter.friends && trama.author.id in currentUserCharacter.friends);
+                          case 'collaborators':
+                            // Solo el autor y colaboradores específicos pueden responder
+                            return trama.author?.username === currentUserCharacter.username || 
+                                   trama.collaborators?.includes(currentUserCharacter.id);
+                          default:
+                            return true;
+                        }
+                      };
+
+                      const userCanRespond = canRespond();
+
+                      if (!userCanRespond) {
+                        return (
+                          <div className="border-t pt-4 mt-4">
+                            <div className="text-center py-4 text-muted-foreground">
+                              <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">
+                                {trama.responseConfig === 'friends' 
+                                  ? 'Solo los amigos del autor pueden continuar esta historia'
+                                  : 'Solo los colaboradores invitados pueden continuar esta historia'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="border-t pt-4 mt-4">
+                          <div className="space-y-3">
+                            <label className="text-sm font-medium text-muted-foreground">
+                              Continúa la historia:
+                            </label>
+                            <Textarea
+                              value={responseTexts[trama.id] || ''}
+                              onChange={(e) => setResponseTexts(prev => ({ 
+                                ...prev, 
+                                [trama.id]: e.target.value 
+                              }))}
+                              placeholder="Escribe cómo continúa la historia... Mantén la coherencia narrativa y el orden cronológico."
+                              className="min-h-[120px] text-base leading-relaxed w-full resize-none"
+                            />
+                            <div className="flex justify-end">
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleAddResponse(trama.id)}
+                                disabled={!responseTexts[trama.id]?.trim()}
+                              >
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                Continuar Historia
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                     
                     {/* Información de configuración */}
                     <div className="flex items-center justify-between pt-4 border-t text-xs text-muted-foreground mt-4">
