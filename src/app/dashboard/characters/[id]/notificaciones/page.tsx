@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -307,7 +308,12 @@ export default function NotificationsPage() {
                         <AvatarFallback>{request.senderName.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{request.senderName}</p>
+                        <Link 
+                          href={`/characters/${request.senderId}`}
+                          className="font-medium hover:text-primary transition-colors"
+                        >
+                          {request.senderName}
+                        </Link>
                         <p className="text-sm text-muted-foreground">@{request.senderUsername}</p>
                         <p className="text-xs text-muted-foreground">
                           {getTimeAgo(new Date(request.sentAt).getTime())}
@@ -444,7 +450,12 @@ export default function NotificationsPage() {
                       <AvatarFallback>{request.senderName.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">{request.senderName}</p>
+                      <Link 
+                        href={`/characters/${request.senderId}`}
+                        className="font-medium hover:text-primary transition-colors"
+                      >
+                        {request.senderName}
+                      </Link>
                       <p className="text-sm text-muted-foreground">@{request.senderUsername}</p>
                       <p className="text-xs text-muted-foreground">
                         {getTimeAgo(new Date(request.sentAt).getTime())}

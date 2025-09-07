@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,11 +14,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCharacter } from './layout';
 import { sanitize } from '@/lib/sanitize';
-import { ref, push, set , onValue , remove } from 'firebase/database';
+import { ref, push, set , onValue , remove, get } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import { Character } from '@/lib/types';
 
 export default function CharacterProfilePage() {
-  const { character, isOwner } = useCharacter();
+  const { character, isOwner, allCharacters } = useCharacter();
   const [posts, setPosts] = useState<any[]>([]);
   const [content, setContent] = useState('');
   const [editingPost, setEditingPost] = useState<string | null>(null);
@@ -297,7 +299,12 @@ export default function CharacterProfilePage() {
                         </Avatar>
                         <div className="flex-1">
                           <div className="flex items-baseline gap-2">
-                            <p className="font-bold">{post.charName}</p>
+                            <Link 
+                              href={`/characters/${post.characterId || character.id}`}
+                              className="font-bold hover:text-primary transition-colors"
+                            >
+                              {post.charName}
+                            </Link>
                             <p className="text-sm text-muted-foreground">{post.charHandle}</p>
                             <p className="text-sm text-muted-foreground">&middot;</p>
                             <p className="text-sm text-muted-foreground">{new Date(post.time).toLocaleString()}</p>
@@ -384,18 +391,249 @@ export default function CharacterProfilePage() {
 
             {/* Feed de Amigos */}
             <TabsContent value="feed">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Feed de Amigos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Aquí verás las publicaciones de tus amigos.</p>
-                </CardContent>
-              </Card>
+              <div className="space-y-6">
+                {/* Aquí se mostrará el feed con posts propios, de amigos y tramas nuevas */}
+                <FeedContent character={character} allCharacters={allCharacters} />
+              </div>
             </TabsContent>
           </Tabs>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Componente para el Feed
+function FeedContent({ character, allCharacters }: { character: any, allCharacters: any }) {
+  const [friends, setFriends] = useState<string[]>([]);
+  const [feedItems, setFeedItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Obtener amigos
+  useEffect(() => {
+    if (!character?.id) return;
+
+    const friendsRef = ref(db, `characters/${character.id}/friends`);
+    const unsubscribe = onValue(friendsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      setFriends(Object.keys(data).filter((id) => data[id] === true));
+    });
+
+    return () => unsubscribe();
+  }, [character?.id]);
+
+  // Cargar el feed: posts propios + amigos + tramas nuevas
+  useEffect(() => {
+    if (!character?.id) return;
+
+    const loadFeed = async () => {
+      setLoading(true);
+      try {
+        const items: any[] = [];
+
+        // 1. Tus propios posts
+        const ownPostsRef = ref(db, `characters/${character.id}/posts`);
+        const ownPostsSnap = await get(ownPostsRef);
+        if (ownPostsSnap.exists()) {
+          const postsData = ownPostsSnap.val();
+          Object.entries(postsData).forEach(([postId, post]: [string, any]) => {
+            items.push({
+              id: `own-post-${postId}`,
+              type: 'post',
+              ...post,
+              characterName: character.name,
+              characterUsername: character.username,
+              characterAvatar: character.avatarUrl,
+              characterId: character.id,
+            });
+          });
+        }
+
+        // 2. Posts de amigos
+        for (const friendId of friends) {
+          const friend = allCharacters.find((c: Character) => c.id === friendId);
+          if (!friend) continue;
+
+          const friendPostsRef = ref(db, `characters/${friendId}/posts`);
+          const friendPostsSnap = await get(friendPostsRef);
+          if (friendPostsSnap.exists()) {
+            const postsData = friendPostsSnap.val();
+            Object.entries(postsData).forEach(([postId, post]: [string, any]) => {
+              if (post.visibility === 'public' || (post.visibility === 'friends' && friends.includes(friendId))) {
+                items.push({
+                  id: `friend-post-${friendId}-${postId}`,
+                  type: 'post',
+                  ...post,
+                  characterName: friend.name,
+                  characterUsername: friend.username,
+                  characterAvatar: friend.avatarUrl,
+                  characterId: friendId,
+                });
+              }
+            });
+          }
+        }
+
+        // 3. Tramas nuevas (respuestas recientes)
+        const tramasRef = ref(db, 'tramas');
+        const tramasSnap = await get(tramasRef);
+        if (tramasSnap.exists()) {
+          const tramasData = tramasSnap.val();
+          Object.entries(tramasData).forEach(([tramaId, trama]: [string, any]) => {
+            const authorId = trama.authorId;
+            const isOwnTrama = authorId === character.id;
+            const isFriendTrama = friends.includes(authorId);
+            const isParticipant = trama.responses && Object.values(trama.responses).some((response: any) => response.author?.id === character.id);
+
+            if (
+              (trama.visibility === 'public') ||
+              (trama.visibility === 'friends' && (isOwnTrama || isFriendTrama)) ||
+              (trama.visibility === 'private' && isOwnTrama) ||
+              isParticipant
+            ) {
+              // Obtener la respuesta más reciente
+              const responses = Object.entries(trama.responses || {})
+                .map(([responseId, response]: [string, any]) => ({
+                  ...response,
+                  id: responseId
+                }))
+                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+              const latestResponse = responses[0];
+
+              if (latestResponse && latestResponse.createdAt) {
+                // Buscar información del autor de la respuesta
+                const responseAuthor = allCharacters.find((c: Character) => c.id === latestResponse.author?.id);
+                
+                if (responseAuthor) {
+                  items.push({
+                    id: `trama-${tramaId}-response-${latestResponse.id}`,
+                    type: 'trama',
+                    content: `📖 Nueva respuesta en "${trama.name}"\n\n${latestResponse.content.substring(0, 150)}...`,
+                    time: latestResponse.createdAt,
+                    visibility: trama.visibility,
+                    characterName: responseAuthor.name,
+                    characterUsername: responseAuthor.username,
+                    characterAvatar: responseAuthor.avatarUrl,
+                    characterId: responseAuthor.id,
+                    tramaId,
+                    tramaName: trama.name,
+                    tramaDescription: trama.description,
+                  });
+                }
+              }
+            }
+          });
+        }
+
+        // Ordenar por fecha (más reciente primero)
+        items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+        setFeedItems(items);
+      } catch (error) {
+        console.error('Error al cargar el feed:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFeed();
+  }, [character, friends, allCharacters]);
+
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const postDate = new Date(dateString);
+    const diffInMs = now.getTime() - postDate.getTime();
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInDays > 0) return `${diffInDays}d`;
+    if (diffInHours > 0) return `${diffInHours}h`;
+    return 'ahora';
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center h-32">
+          <p>Cargando feed...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (feedItems.length === 0) {
+    return (
+      <Card>
+        <CardContent className="text-center py-10">
+          <p className="text-muted-foreground">No hay publicaciones para mostrar en tu feed.</p>
+          <p className="text-sm text-muted-foreground mt-2">Agrega amigos para ver sus publicaciones aquí.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {feedItems.map((item) => (
+        <Card key={item.id}>
+          <CardHeader>
+            <div className="flex gap-4">
+              <Avatar>
+                <AvatarImage src={item.characterAvatar} />
+                <AvatarFallback>{item.characterName?.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <div className="flex items-baseline gap-2">
+                  <Link 
+                    href={`/characters/${item.characterId}`}
+                    className="font-bold hover:text-primary transition-colors"
+                  >
+                    {item.characterName}
+                  </Link>
+                  <p className="text-sm text-muted-foreground">@{item.characterUsername}</p>
+                  <p className="text-sm text-muted-foreground">&middot;</p>
+                  <p className="text-sm text-muted-foreground">{getTimeAgo(item.time)}</p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    {item.visibility === 'public' ? <Eye className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+                    <span>{item.visibility === 'public' ? 'Público' : 'Amigos'}</span>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  {item.type === 'trama' ? (
+                    <div className="space-y-3">
+                      <p className="whitespace-pre-wrap">{item.content}</p>
+                      <Link href={`/dashboard/characters/${item.characterId}/tramas/${item.tramaId}`}>
+                        <Card className="p-3 hover:shadow-md transition-shadow cursor-pointer border">
+                          <h3 className="font-bold text-sm">{item.tramaName}</h3>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {item.tramaDescription}
+                          </p>
+                        </Card>
+                      </Link>
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: item.content }} />
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <div className="px-6 pb-6 flex justify-around text-muted-foreground border-t pt-2">
+            <Button variant="ghost" size="sm" className="flex items-center gap-2 hover:text-blue-500">
+              <ThumbsUp className="h-4 w-4" /> {item.likes || 0}
+            </Button>
+            <Button variant="ghost" size="sm" className="flex items-center gap-2 hover:text-red-500">
+              <Heart className="h-4 w-4" /> {item.hearts || 0}
+            </Button>
+            <Button variant="ghost" size="sm" className="flex items-center gap-2 hover:text-orange-500">
+              <Frown className="h-4 w-4" /> {item.heartbreaks || 0}
+            </Button>
+            <Button variant="ghost" size="sm" className="flex items-center gap-2 hover:text-yellow-500">
+              <Laugh className="h-4 w-4" /> {item.laughs || 0}
+            </Button>
+          </div>
+        </Card>
+      ))}
     </div>
   );
 }

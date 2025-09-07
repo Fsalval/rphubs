@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -285,7 +286,13 @@ export default function MessagesPage() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium truncate">{other.name}</p>
+                      <Link 
+                        href={`/characters/${other.id}`}
+                        className="text-sm font-medium truncate hover:text-primary transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {other.name}
+                      </Link>
                       {unreadCount > 0 && (
                         <Badge variant="destructive" className="text-xs">
                           {unreadCount}
@@ -316,7 +323,13 @@ export default function MessagesPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="text-sm font-medium">{char.name}</p>
+                      <Link 
+                        href={`/characters/${char.id}`}
+                        className="text-sm font-medium hover:text-primary transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {char.name}
+                      </Link>
                       <p className="text-xs text-muted-foreground">@{char.username}</p>
                     </div>
                   </div>
@@ -341,7 +354,12 @@ export default function MessagesPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{getOtherParticipant(selectedChat).name}</p>
+                    <Link 
+                      href={`/characters/${getOtherParticipant(selectedChat).id}`}
+                      className="font-medium hover:text-primary transition-colors"
+                    >
+                      {getOtherParticipant(selectedChat).name}
+                    </Link>
                     <p className="text-sm text-muted-foreground">@{getOtherParticipant(selectedChat).username}</p>
                   </div>
                 </div>

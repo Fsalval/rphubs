@@ -199,6 +199,7 @@ export default function TramasPage() {
       const newResponse = {
         content: sanitize(responseText),
         author: {
+          id: character.id,
           name: character.name,
           username: character.username,
           avatarUrl: character.avatarUrl
@@ -849,7 +850,12 @@ export default function TramasPage() {
                           {tramaResponses[trama.id].map((response) => (
                             <div key={response.id} className="bg-muted/30 rounded-lg p-4">
                               <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
-                                <span className="font-medium">{response.author.name}</span>
+                                <Link 
+                                  href={`/characters/${response.author.id}`}
+                                  className="font-medium hover:text-primary transition-colors"
+                                >
+                                  {response.author.name}
+                                </Link>
                                 <span>•</span>
                                 <span>{new Date(response.time).toLocaleString()}</span>
                               </div>

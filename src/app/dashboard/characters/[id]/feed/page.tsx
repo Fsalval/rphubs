@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Search, Users, Globe, Heart, MessageCircle, Share2, MoreHorizontal, Clock } from 'lucide-react';
+import { Search, Users, Globe, Heart, MessageCircle, Share2, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import { useCharacter } from '../layout';
 import { sanitize } from '@/lib/sanitize';
@@ -123,46 +122,57 @@ export default function FeedPage() {
           }
         }
 
-        // 3. Tramas nuevas (último capítulo publicado)
+        // 3. Tramas nuevas (respuestas recientes de tramas donde participo o soy autor)
         const tramasRef = ref(db, 'tramas');
         const tramasSnap = await get(tramasRef);
         if (tramasSnap.exists()) {
           const tramasData = tramasSnap.val();
           Object.entries(tramasData).forEach(([tramaId, trama]: [string, any]) => {
-            const authorId = trama.author?.id;
+            const authorId = trama.authorId;
             const isOwnTrama = authorId === character.id;
             const isFriendTrama = friends.includes(authorId);
+            const isParticipant = trama.responses && Object.values(trama.responses).some((response: any) => response.author?.id === character.id);
 
             if (
               (trama.visibility === 'public') ||
               (trama.visibility === 'friends' && (isOwnTrama || isFriendTrama)) ||
-              (trama.visibility === 'private' && isOwnTrama)
+              (trama.visibility === 'private' && isOwnTrama) ||
+              isParticipant
             ) {
-              // Obtener último capítulo
-              const chapters = Object.values(trama.chapters || {}).sort(
-                (a: any, b: any) => b.order - a.order
-              );
-              const latestChapter = chapters[0] as any;
+              // Obtener la respuesta más reciente
+              const responses = Object.entries(trama.responses || {})
+                .map(([responseId, response]: [string, any]) => ({
+                  ...response,
+                  id: responseId
+                }))
+                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-              if (latestChapter) {
-                feedItems.push({
-                  id: `trama-${tramaId}-update`,
-                  content: `📖 Nuevo capítulo: "${latestChapter.title}"\n\n${latestChapter.content.substring(0, 150)}...`,
-                  time: latestChapter.createdAt || trama.lastUpdated || new Date().toISOString(),
-                  visibility: trama.visibility,
-                  characterName: trama.author.name,
-                  characterUsername: trama.author.username,
-                  characterAvatar: trama.author.avatar,
-                  characterId: authorId,
-                  type: 'trama',
-                  tramaId,
-                  tramaName: trama.name,
-                  tramaDescription: trama.description,
-                  tramaCoverImage: trama.coverImage,
-                  likes: 0,
-                  comments: 0,
-                  shares: 0,
-                });
+              const latestResponse = responses[0];
+
+              if (latestResponse && latestResponse.createdAt) {
+                // Buscar información del autor de la respuesta
+                const responseAuthor = allCharacters.find((c: Character) => c.id === latestResponse.author?.id);
+                
+                if (responseAuthor) {
+                  feedItems.push({
+                    id: `trama-${tramaId}-response-${latestResponse.id}`,
+                    content: `📖 Nueva respuesta en "${trama.name}"\n\n${latestResponse.content.substring(0, 150)}...`,
+                    time: latestResponse.createdAt,
+                    visibility: trama.visibility,
+                    characterName: responseAuthor.name,
+                    characterUsername: responseAuthor.username,
+                    characterAvatar: responseAuthor.avatarUrl,
+                    characterId: responseAuthor.id,
+                    type: 'trama',
+                    tramaId,
+                    tramaName: trama.name,
+                    tramaDescription: trama.description,
+                    tramaCoverImage: trama.coverImage,
+                    likes: 0,
+                    comments: 0,
+                    shares: 0,
+                  });
+                }
               }
             }
           });
@@ -336,7 +346,13 @@ export default function FeedPage() {
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="font-bold">{item.characterName}</p>
+                  <Link 
+                    href={`/characters/${item.characterId}`}
+                    className="font-bold hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {item.characterName}
+                  </Link>
                   <p className="text-sm text-muted-foreground">@{item.characterUsername}</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -375,11 +391,14 @@ export default function FeedPage() {
                   <Link href={`/dashboard/characters/${item.characterId}/tramas/${item.tramaId}`}>
                     <Card className="p-3 hover:shadow-md transition-shadow cursor-pointer border">
                       {item.tramaCoverImage && (
-                        <img
-                          src={item.tramaCoverImage}
-                          alt={item.tramaName}
-                          className="w-full h-20 object-cover rounded-md mb-2"
-                        />
+                        <div className="relative w-full h-20 mb-2">
+                          <Image
+                            src={item.tramaCoverImage}
+                            alt={item.tramaName || 'Trama cover'}
+                            fill
+                            className="object-cover rounded-md"
+                          />
+                        </div>
                       )}
                       <h3 className="font-bold text-sm">{item.tramaName}</h3>
                       <p className="text-xs text-muted-foreground line-clamp-2">

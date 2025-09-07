@@ -167,7 +167,12 @@ export default function AmigosPage() {
                           {amigo.name?.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                      <h3 className="font-semibold text-center">{amigo.name}</h3>
+                      <Link 
+                        href={`/characters/${amigo.id}`}
+                        className="font-semibold text-center hover:text-primary transition-colors"
+                      >
+                        {amigo.name}
+                      </Link>
                       <p className="text-sm text-gray-500 mb-2">@{amigo.username}</p>
                       <p className="text-xs text-gray-400 mb-3">
                         Amigos desde {amigo.friendSince ? new Date(amigo.friendSince).toLocaleDateString() : 'Fecha desconocida'}
@@ -220,7 +225,12 @@ export default function AmigosPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <h3 className="font-medium">{solicitud.fromCharacterName}</h3>
+                          <Link 
+                            href={`/characters/${solicitud.fromCharacterId}`}
+                            className="font-medium hover:text-primary transition-colors"
+                          >
+                            {solicitud.fromCharacterName}
+                          </Link>
                           <p className="text-sm text-gray-500">
                             Enviada hace {Math.floor((Date.now() - solicitud.timestamp) / (1000 * 60 * 60 * 24))} días
                           </p>

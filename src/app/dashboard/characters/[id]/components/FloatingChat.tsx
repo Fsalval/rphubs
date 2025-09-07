@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -170,6 +171,10 @@ export default function FloatingChat() {
     return chat.participantNames?.[otherParticipant || ''] || 'Usuario desconocido';
   };
 
+  const getOtherParticipantId = (chat: Chat) => {
+    return chat.participants.find((p) => p !== character?.id) || '';
+  };
+
   const getOtherParticipantAvatar = (chat: Chat) => {
     const otherParticipant = chat.participants.find((p) => p !== character?.id);
     return chat.participantAvatars?.[otherParticipant || ''] || '';
@@ -191,9 +196,10 @@ export default function FloatingChat() {
             {unreadTotal > 0 && (
               <Badge
                 variant="destructive"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs"
+                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs gap-1"
               >
-                {unreadTotal > 99 ? '99+' : unreadTotal}
+                <MessageSquare className="h-3 w-3" />
+                <span>{unreadTotal > 99 ? '99+' : unreadTotal}</span>
               </Badge>
             )}
           </Button>
@@ -207,7 +213,16 @@ export default function FloatingChat() {
             <CardHeader className="p-3 border-b">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm">
-                  {selectedChat ? getOtherParticipantName(selectedChat) : 'Mensajes'}
+                  {selectedChat ? (
+                    <Link 
+                      href={`/characters/${getOtherParticipantId(selectedChat)}`}
+                      className="hover:text-primary transition-colors"
+                    >
+                      {getOtherParticipantName(selectedChat)}
+                    </Link>
+                  ) : 
+                    'Mensajes'
+                  }
                 </CardTitle>
                 <div className="flex gap-1">
                   <Button
@@ -253,7 +268,13 @@ export default function FloatingChat() {
                               <AvatarFallback>{getOtherParticipantName(chat).charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{getOtherParticipantName(chat)}</p>
+                              <Link 
+                                href={`/characters/${getOtherParticipantId(chat)}`}
+                                className="text-sm font-medium truncate hover:text-primary transition-colors block"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {getOtherParticipantName(chat)}
+                              </Link>
                               <p className="text-xs text-muted-foreground truncate">
                                 {chat.lastMessage || 'Sin mensajes'}
                               </p>
