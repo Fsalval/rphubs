@@ -509,10 +509,12 @@ export default function TramasPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 {/* Modo Lectura - Siempre disponible (condición eliminada) */}
-                                <DropdownMenuItem onClick={() => router.push(`/lectura?tramaId=${trama.id}`)}>
-                                  <BookOpen className="h-4 w-4 mr-2" />
-                                  Modo Lectura
-                                </DropdownMenuItem>
+                                <Link href={`/lectura?tramaId=${trama.id}`} className="w-full">
+                                  <DropdownMenuItem className="w-full cursor-pointer">
+                                    <BookOpen className="h-4 w-4 mr-2" />
+                                    Modo Lectura
+                                  </DropdownMenuItem>
+                                </Link>
                                     {/* Nuevo Capítulo/Respuesta */}
                                 <DropdownMenuItem onClick={() => {
                                   // Enfocar el textarea de respuesta para esta trama
