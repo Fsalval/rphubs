@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Users, Upload, X, ArrowLeft } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { useCharacter } from '../../layout'; // Ajusta la ruta si es necesario
+import { useCharacter } from '../../../layout'; // Ajusta la ruta si es necesario
 import { ref, push } from 'firebase/database';
 import { db, storage } from '@/lib/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
