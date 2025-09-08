@@ -241,7 +241,7 @@ const saveAboutme = async () => {
     try {
       const updates = { tags: tags };
       await update(ref(db, `characters/${character.id}`), updates);
-      updateCharacterData(updates);
+      updateCharacterData({ ...character, ...updates });
       setEditingTags(false);
     } catch (error) {
       console.error('Error saving tags:', error);
@@ -253,7 +253,7 @@ const saveAboutme = async () => {
     try {
       const updates = { socialLinks: enlaces };
       await update(ref(db, `characters/${character.id}`), updates);
-      updateCharacterData(updates);
+      updateCharacterData({ ...character, ...updates });
       setEditingEnlaces(false);
     } catch (error) {
       console.error('Error saving social links:', error);
@@ -322,59 +322,6 @@ const saveAboutme = async () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Foto de Avatar */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Camera className="h-4 w-4" />
-            Foto de Avatar
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {avatarPhoto ? (
-              <div className="relative">
-                <Image 
-                  src={avatarPhoto} 
-                  alt="Avatar" 
-                  width={400}
-                  height={192}
-                  className="w-full h-48 object-cover rounded-lg"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="absolute top-2 right-2 bg-white/80 hover:bg-white"
-                  onClick={() => setAvatarPhoto('')}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <Camera className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                <p className="text-sm text-muted-foreground mb-2">
-                  No hay foto de avatar
-                </p>
-              </div>
-            )}
-            
-            <ImageUpload
-              value={avatarPhoto}
-              onChange={handleAvatarUpload}
-              disabled={uploadingPhoto}
-              variant="banner"
-              placeholder={avatarPhoto ? 'Cambiar Foto' : 'Subir Foto'}
-            />
-            
-            <p className="text-xs text-muted-foreground text-center">
-              La foto aparecerá en el feed y reemplazará la anterior
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Etiquetas - Editable */}
       <Card>
         <CardHeader>
