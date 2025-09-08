@@ -298,7 +298,7 @@ export default function TramasPage() {
           <h2 className="text-2xl font-bold">Tramas</h2>
           {isOwner && (
             // Botón actualizado para usar Link
-            <Link href="new">
+            <Link href={`/dashboard/characters/${character.id}/tramas/new`}>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
                 Nueva Trama
@@ -509,11 +509,11 @@ export default function TramasPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 {/* Modo Lectura - Siempre disponible (condición eliminada) */}
-                                <DropdownMenuItem onClick={() => window.location.href = `lectura?tramaId=${trama.id}`}>
+                                <DropdownMenuItem onClick={() => router.push(`/lectura?tramaId=${trama.id}`)}>
                                   <BookOpen className="h-4 w-4 mr-2" />
                                   Modo Lectura
                                 </DropdownMenuItem>
-                                {/* Nuevo Capítulo/Respuesta */}
+                                    {/* Nuevo Capítulo/Respuesta */}
                                 <DropdownMenuItem onClick={() => {
                                   // Enfocar el textarea de respuesta para esta trama
                                   const textarea = document.getElementById(`response-textarea-${trama.id}`);
