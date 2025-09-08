@@ -14,6 +14,23 @@ import { db } from '@/lib/firebase';
 import { ref, update, push } from 'firebase/database';
 import { ImageUpload } from '@/components/ui/image-upload';
 
+// Función para calcular edad desde fecha de nacimiento
+const calculateAge = (birthDate: string): number => {
+  if (!birthDate) return 0;
+  
+  const birth = new Date(birthDate);
+  const today = new Date();
+  
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  
+  return age;
+};
+
 // Componente para selector de visibilidad
 const VisibilitySelector = ({ 
   value, 
@@ -301,6 +318,9 @@ export default function FichaPage() {
     return <div>Cargando...</div>;
   }
 
+  // Calcular edad desde birthDate
+  const age = calculateAge(character.birthDate);
+
   return (
     <div className="grid gap-8 md:grid-cols-12">
       {/* Sidebar izquierdo - CORREGIDO */}
@@ -531,9 +551,9 @@ export default function FichaPage() {
         </Card>
       </div>
 
-      {/* Contenido principal - SIN CAMBIOS */}
+      {/* Contenido principal - ACTUALIZADO con edad y nacionalidad */}
       <div className="md:col-span-8 lg:col-span-9 space-y-6">
-        {/* Información Básica */}
+        {/* Información Básica - ACTUALIZADO */}
         <Card>
           <CardHeader>
             <CardTitle>Información Básica</CardTitle>
@@ -546,15 +566,15 @@ export default function FichaPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Edad</label>
-                <p className="text-lg">{character.age || 'No especificada'}</p>
+                <p className="text-lg">{age > 0 ? `${age} años` : 'No especificada'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium">Género</label>
                 <p className="text-lg">{character.gender || 'No especificado'}</p>
               </div>
               <div>
-                <label className="text-sm font-medium">Especie</label>
-                <p className="text-lg">{character.species || 'No especificada'}</p>
+                <label className="text-sm font-medium">Nacionalidad</label>
+                <p className="text-lg">{character.nationality || 'No especificada'}</p>
               </div>
             </div>
             
