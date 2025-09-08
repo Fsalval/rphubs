@@ -285,13 +285,9 @@ export default function FloatingChat() {
                               <AvatarFallback>{getOtherParticipantName(chat).charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <Link 
-                                href={`/characters/${getOtherParticipantId(chat)}`}
-                                className="text-sm font-medium truncate hover:text-primary transition-colors block"
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                              <span className="text-sm font-medium truncate block">
                                 {getOtherParticipantName(chat)}
-                              </Link>
+                              </span>
                               <p className="text-xs text-muted-foreground truncate">
                                 {chat.lastMessage || 'Sin mensajes'}
                               </p>

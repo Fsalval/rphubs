@@ -10,6 +10,7 @@ import { UserPlus, MessageSquare, ArrowLeft, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 import { Character } from '@/lib/types';
 import { User as FirebaseUser } from 'firebase/auth'; // Asegúrate de tener esto
+import PublicFloatingChat from '@/components/PublicFloatingChat';
 
 // === TIPOS ===
 interface PublicCharacterContextType {
@@ -150,15 +151,28 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
         // Aceptar solicitud
         await set(ref(db, `characters/${characterId}/friends/${currentUserCharacter.id}`), true);
         await set(ref(db, `characters/${currentUserCharacter.id}/friends/${characterId}`), true);
+        // Limpiar ambos formatos
         await set(ref(db, `characters/${currentUserCharacter.id}/friendRequests/${characterId}`), null);
+        await set(ref(db, `friendRequests/${currentUserCharacter.id}/${characterId}`), null);
         setFriendshipStatus('friends');
       } else if (friendshipStatus === 'pending_sent') {
-        // Cancelar solicitud
+        // Cancelar solicitud - Limpiar ambos formatos
         await set(ref(db, `characters/${characterId}/friendRequests/${currentUserCharacter.id}`), null);
+        await set(ref(db, `friendRequests/${characterId}/${currentUserCharacter.id}`), null);
         setFriendshipStatus('none');
       } else {
-        // Enviar solicitud
+        // Enviar solicitud - Escribir en ambos formatos para compatibilidad
         await set(ref(db, `characters/${characterId}/friendRequests/${currentUserCharacter.id}`), true);
+        
+        // También escribir en el formato que usa el dashboard para notificaciones
+        await set(ref(db, `friendRequests/${characterId}/${currentUserCharacter.id}`), {
+          status: 'pending',
+          senderName: currentUserCharacter.name,
+          senderUsername: currentUserCharacter.username,
+          senderAvatar: currentUserCharacter.avatarUrl,
+          sentAt: Date.now()
+        });
+        
         setFriendshipStatus('pending_sent');
       }
     } catch (error) {
@@ -171,7 +185,9 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
     if (!currentUserCharacter || !characterId) return;
 
     try {
+      // Limpiar ambos formatos
       await set(ref(db, `characters/${currentUserCharacter.id}/friendRequests/${characterId}`), null);
+      await set(ref(db, `friendRequests/${currentUserCharacter.id}/${characterId}`), null);
     } catch (error) {
       console.error('Error rejecting request:', error);
     }
@@ -192,83 +208,96 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
         {/* Header del personaje */}
         <header className="bg-background/80 backdrop-blur-sm sticky top-0 z-20 border-b">
           <div className="container mx-auto px-4">
-            <div className="flex h-16 items-center justify-between gap-4">
-              <div className="flex items-center gap-4 flex-shrink-0">
-                <Avatar>
+            <div className="flex h-auto md:h-16 items-center justify-between gap-4 py-4 md:py-0">
+              <div className="flex items-center gap-4 flex-shrink-0 min-w-0">
+                <Avatar className="h-10 w-10 md:h-12 md:w-12">
                   <AvatarImage src={character.avatarUrl} alt={character.name} />
                   <AvatarFallback>{character.name.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <div>
-                  <h1 className="text-xl font-bold">{character.name}</h1>
-                  <p className="text-sm text-muted-foreground">@{character.username}</p>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-lg md:text-xl font-bold truncate">{character.name}</h1>
+                  <p className="text-sm text-muted-foreground truncate">@{character.username}</p>
                   {age !== null && age < 18 && (
                     <p className="text-sm text-yellow-600 font-medium">Edad: {age} años</p>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {currentUserCharacter && currentUserCharacter.id !== characterId && (
-                  <div className="flex gap-2">
-                    {friendshipStatus === 'friends' && (
-                      <Button size="sm" variant="outline" onClick={handleFriendRequest}>
-                        <UserCheck className="h-4 w-4 mr-2" />
-                        Eliminar amigo
-                      </Button>
-                    )}
-
-                    {friendshipStatus === 'pending_sent' && (
-                      <Button size="sm" variant="outline" onClick={handleFriendRequest}>
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Cancelar solicitud
-                      </Button>
-                    )}
-
-                    {friendshipStatus === 'pending_received' && (
-                      <>
-                        <Button size="sm" variant="default" onClick={handleFriendRequest}>
-                          <UserCheck className="h-4 w-4 mr-2" />
-                          Aceptar solicitud
+                  <div className="flex flex-col md:flex-row gap-2">
+                    <div className="flex gap-2">
+                      {friendshipStatus === 'friends' && (
+                        <Button size="sm" variant="outline" onClick={handleFriendRequest} className="text-xs md:text-sm">
+                          <UserCheck className="h-4 w-4 md:mr-2" />
+                          <span className="hidden md:inline">Eliminar amigo</span>
                         </Button>
-                        <Button size="sm" variant="outline" onClick={handleRejectRequest}>
-                          Rechazar
+                      )}
+
+                      {friendshipStatus === 'pending_sent' && (
+                        <Button size="sm" variant="outline" onClick={handleFriendRequest} className="text-xs md:text-sm">
+                          <UserPlus className="h-4 w-4 md:mr-2" />
+                          <span className="hidden md:inline">Cancelar solicitud</span>
                         </Button>
-                      </>
-                    )}
+                      )}
 
-                    {friendshipStatus === 'none' && (
-                      <Button size="sm" variant="default" onClick={handleFriendRequest}>
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Enviar solicitud
+                      {friendshipStatus === 'pending_received' && (
+                        <>
+                          <Button size="sm" variant="default" onClick={handleFriendRequest} className="text-xs md:text-sm">
+                            <UserCheck className="h-4 w-4 md:mr-2" />
+                            <span className="hidden md:inline">Aceptar solicitud</span>
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={handleRejectRequest} className="text-xs md:text-sm">
+                            <span className="hidden md:inline">Rechazar</span>
+                            <span className="md:hidden">✕</span>
+                          </Button>
+                        </>
+                      )}
+
+                      {friendshipStatus === 'none' && (
+                        <Button size="sm" variant="default" onClick={handleFriendRequest} className="text-xs md:text-sm">
+                          <UserPlus className="h-4 w-4 md:mr-2" />
+                          <span className="hidden md:inline">Enviar solicitud</span>
+                        </Button>
+                      )}
+
+                      <Button size="sm" variant="outline" onClick={handleStartMessage} className="text-xs md:text-sm">
+                        <MessageSquare className="h-4 w-4 md:mr-2" />
+                        <span className="hidden md:inline">Mensaje</span>
                       </Button>
-                    )}
+                    </div>
 
-                    <Button size="sm" variant="outline" onClick={handleStartMessage}>
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Mensaje
-                    </Button>
+                    <Link href={`/dashboard/characters/${currentUserCharacter.id}`} className="hidden md:block">
+                      <Button size="sm" variant="ghost">
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Volver a mi perfil
+                      </Button>
+                    </Link>
                   </div>
-                )}
-
-                {currentUserCharacter && currentUserCharacter.id !== characterId && (
-                  <Link href={`/dashboard/characters/${currentUserCharacter.id}`}>
-                    <Button size="sm" variant="ghost">
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Volver a mi perfil
-                    </Button>
-                  </Link>
                 )}
               </div>
             </div>
+            
+            {/* Botón de volver para móvil */}
+            {currentUserCharacter && currentUserCharacter.id !== characterId && (
+              <div className="pb-2 md:hidden">
+                <Link href={`/dashboard/characters/${currentUserCharacter.id}`}>
+                  <Button size="sm" variant="ghost" className="w-full justify-start">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Volver a mi perfil
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         </header>
 
         <nav className="bg-background border-b sticky top-16 z-10">
           <div className="container mx-auto px-4">
-            <div className="flex justify-center gap-8 py-2">
+            <div className="flex justify-center gap-4 md:gap-8 py-2 overflow-x-auto">
               <Link
                 href={`/characters/${characterId}`}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-3 md:px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isMainProfile ? 'border-primary' : 'border-transparent hover:border-primary'
                 }`}
               >
@@ -276,7 +305,7 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
               </Link>
               <Link
                 href={`/characters/${characterId}/ficha`}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-3 md:px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   pathname === `/characters/${characterId}/ficha` ? 'border-primary' : 'border-transparent hover:border-primary'
                 }`}
               >
@@ -284,7 +313,7 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
               </Link>
               <Link
                 href={`/characters/${characterId}/tramas`}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-3 md:px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   pathname === `/characters/${characterId}/tramas` ? 'border-primary' : 'border-transparent hover:border-primary'
                 }`}
               >
@@ -294,13 +323,21 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
           </div>
         </nav>
 
-        <main className="container mx-auto p-6">
+        <main className="container mx-auto p-4 md:p-6">
           {children}
         </main>
 
         <footer className="bg-background/80 backdrop-blur-sm border-t border-border py-4 text-center text-sm text-muted-foreground">
           <p>© 2025 rphubs. Todos los derechos reservados.</p>
         </footer>
+
+        {/* Chat flotante para mensajes */}
+        {currentUserCharacter && currentUserCharacter.id !== characterId && character && (
+          <PublicFloatingChat 
+            currentUserCharacter={currentUserCharacter}
+            targetCharacter={character}
+          />
+        )}
       </div>
     </PublicCharacterContext.Provider>
   );

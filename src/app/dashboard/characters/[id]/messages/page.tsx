@@ -10,9 +10,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet';
-import { Send, MoreVertical, MessageSquare, Menu } from 'lucide-react';
-import { ref, onValue, push, serverTimestamp, set } from 'firebase/database';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { Send, MoreVertical, MessageSquare, ArrowLeft, Trash2 } from 'lucide-react';
+import { ref, onValue, push, serverTimestamp, set, remove } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useCharacter } from '../layout';
 
@@ -53,7 +53,25 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  const [isChatListOpen, setIsChatListOpen] = useState(false);
+  const [showMobileChat, setShowMobileChat] = useState(false);
+
+  // Función para eliminar chat
+  const handleDeleteChat = async (chatId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta conversación?')) return;
+    
+    try {
+      await remove(ref(db, `chats/${chatId}`));
+      await remove(ref(db, `chatMessages/${chatId}`));
+      
+      // Si es el chat seleccionado, deseleccionarlo
+      if (selectedChat?.id === chatId) {
+        setSelectedChat(null);
+        setShowMobileChat(false);
+      }
+    } catch (error) {
+      console.error('Error al eliminar chat:', error);
+    }
+  };
 
   // Cargar chats
   useEffect(() => {
@@ -254,106 +272,184 @@ export default function MessagesPage() {
 
   return (
     <div className="flex h-[calc(100vh-12rem)]">
-      {/* Mobile Chat List Trigger */}
-      <Sheet open={isChatListOpen} onOpenChange={setIsChatListOpen}>
-        <SheetTrigger asChild>
-          <button className="fixed top-24 left-4 z-50 lg:hidden p-2 bg-background border rounded-lg shadow-lg">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        </SheetTrigger>
-        
-        <SheetContent side="left" className="w-80 p-0">
-          <SheetHeader className="p-4 border-b">
-            <SheetTitle>Conversaciones</SheetTitle>
-            <Input
-              placeholder="Buscar personajes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="text-sm"
-            />
-          </SheetHeader>
+      {/* Vista móvil - Lista de chats o chat individual */}
+      <div className="flex-1 lg:hidden">
+        {!selectedChat || !showMobileChat ? (
+          // Lista de chats en móvil
+          <div className="h-full flex flex-col">
+            <div className="p-4 border-b bg-background">
+              <h2 className="text-xl font-bold mb-4">Conversaciones</h2>
+              <Input
+                placeholder="Buscar personajes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="text-sm"
+              />
+            </div>
+            
+            <ScrollArea className="flex-1">
+              <div className="p-2">
+                <p className="text-xs text-muted-foreground px-2 mb-2">Chats</p>
+                {chats.map((chat) => {
+                  const other = getOtherParticipant(chat);
+                  const unreadCount = chat.unreadCount?.[character?.id || ''] || 0;
 
-          <ScrollArea className="flex-1">
-            <div className="p-2">
-              <p className="text-xs text-muted-foreground px-2 mb-2">Chats</p>
-              {chats.map((chat) => {
-                const other = getOtherParticipant(chat);
-                const unreadCount = chat.unreadCount?.[character?.id || ''] || 0;
-
-                return (
-                  <div
-                    key={chat.id}
-                    className={`flex items-center gap-3 p-2 rounded cursor-pointer ${
-                      selectedChat?.id === chat.id ? 'bg-primary text-primary-foreground' : 'hover:bg-gray-100'
-                    }`}
-                    onClick={() => {
-                      setSelectedChat(chat);
-                      setIsChatListOpen(false);
-                    }}
-                  >
-                    <Avatar className="w-10 h-10">
-                      <AvatarImage src={other.avatarUrl} alt={other.name} />
-                      <AvatarFallback className="text-sm font-bold">
-                        {other.name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <Link 
-                          href={`/characters/${other.id}`}
-                          className="text-sm font-medium truncate hover:text-primary transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {other.name}
-                        </Link>
-                        {unreadCount > 0 && (
-                          <Badge variant="destructive" className="text-xs">
-                            {unreadCount}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {chat.lastMessage || 'Iniciar conversación'}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {searchQuery.trim() && (
-                <>
-                  <p className="text-xs text-muted-foreground px-2 mb-2 mt-4">Buscar personajes</p>
-                  {filteredChars.slice(0, 5).map((char: Character) => (
+                  return (
                     <div
-                      key={char.id}
-                      className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded cursor-pointer"
+                      key={chat.id}
+                      className="flex items-center gap-3 p-3 hover:bg-gray-100 rounded cursor-pointer relative group"
                       onClick={() => {
-                        handleStartChat(char);
-                        setIsChatListOpen(false);
+                        setSelectedChat(chat);
+                        setShowMobileChat(true);
                       }}
                     >
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src={char.avatarUrl} alt={char.name} />
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={other.avatarUrl} alt={other.name} />
                         <AvatarFallback className="text-sm font-bold">
-                          {char.name.charAt(0)}
+                          {other.name.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{char.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">@{char.username}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium truncate">
+                            {other.name}
+                          </span>
+                          {unreadCount > 0 && (
+                            <Badge variant="destructive" className="text-xs ml-2">
+                              {unreadCount}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {chat.lastMessage || 'Iniciar conversación'}
+                        </p>
                       </div>
+                      
+                      {/* Dropdown para eliminar chat */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteChat(chat.id);
+                            }}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Eliminar conversación
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  ))}
-                </>
-              )}
-            </div>
-          </ScrollArea>
-        </SheetContent>
-      </Sheet>
+                  );
+                })}
 
-      {/* Desktop Sidebar */}
+                {searchQuery.trim() && (
+                  <>
+                    <p className="text-xs text-muted-foreground px-2 mb-2 mt-4">Buscar personajes</p>
+                    {filteredChars.slice(0, 5).map((char: Character) => (
+                      <div
+                        key={char.id}
+                        className="flex items-center gap-3 p-3 hover:bg-gray-100 rounded cursor-pointer"
+                        onClick={() => handleStartChat(char)}
+                      >
+                        <Avatar className="w-12 h-12">
+                          <AvatarImage src={char.avatarUrl} alt={char.name} />
+                          <AvatarFallback className="text-sm font-bold">
+                            {char.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{char.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">@{char.username}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        ) : (
+          // Vista del chat individual en móvil
+          <div className="h-full flex flex-col">
+            {/* Header del chat con botón de retroceso */}
+            <div className="p-4 border-b bg-background flex items-center gap-3">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowMobileChat(false)}
+                className="p-2"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={getOtherParticipant(selectedChat).avatarUrl} />
+                <AvatarFallback className="text-sm">
+                  {getOtherParticipant(selectedChat).name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <Link 
+                  href={`/characters/${getOtherParticipant(selectedChat).id}`}
+                  className="font-medium text-sm hover:text-primary transition-colors"
+                >
+                  {getOtherParticipant(selectedChat).name}
+                </Link>
+                <p className="text-xs text-muted-foreground">@{getOtherParticipant(selectedChat).username}</p>
+              </div>
+            </div>
+            
+            {/* Mensajes */}
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.senderId === character?.id ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[70%] p-3 rounded-lg ${
+                        message.senderId === character?.id
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                      <p className="text-xs opacity-70 mt-1">
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+            
+            {/* Input de mensaje */}
+            <div className="p-4 border-t bg-background">
+              <div className="flex gap-2">
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Escribe un mensaje..."
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  className="flex-1"
+                />
+                <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Vista desktop - Sidebar + Chat */}
       <div className="hidden lg:flex lg:w-80 border-r flex-col bg-gray-50">
         <div className="p-4 border-b">
           <Input
@@ -374,7 +470,7 @@ export default function MessagesPage() {
               return (
                 <div
                   key={chat.id}
-                  className={`flex items-center gap-3 p-2 rounded cursor-pointer ${
+                  className={`flex items-center gap-3 p-2 rounded cursor-pointer relative group ${
                     selectedChat?.id === chat.id ? 'bg-primary text-primary-foreground' : 'hover:bg-gray-100'
                   }`}
                   onClick={() => setSelectedChat(chat)}
@@ -387,13 +483,9 @@ export default function MessagesPage() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <Link 
-                        href={`/characters/${other.id}`}
-                        className="text-sm font-medium truncate hover:text-primary transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <span className="text-sm font-medium truncate">
                         {other.name}
-                      </Link>
+                      </span>
                       {unreadCount > 0 && (
                         <Badge variant="destructive" className="text-xs">
                           {unreadCount}
@@ -404,6 +496,27 @@ export default function MessagesPage() {
                       {chat.lastMessage || 'Iniciar conversación'}
                     </p>
                   </div>
+                  
+                  {/* Dropdown para eliminar chat */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteChat(chat.id);
+                        }}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Eliminar conversación
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               );
             })}

@@ -18,8 +18,14 @@ const Alert = ({ className = '', variant = 'default', ...props }: AlertProps) =>
   );
 };
 
-const AlertDescription = ({ children }: { children: React.ReactNode }) => {
-  return <div className="text-sm">{children}</div>;
+const AlertDescription = ({ 
+  children, 
+  className = '' 
+}: { 
+  children: React.ReactNode; 
+  className?: string; 
+}) => {
+  return <div className={`text-sm ${className}`}>{children}</div>;
 };
 
 export { Alert, AlertDescription };

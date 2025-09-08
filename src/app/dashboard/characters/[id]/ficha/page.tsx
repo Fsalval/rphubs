@@ -251,10 +251,7 @@ const saveAboutme = async () => {
             <CardTitle>About me</CardTitle>
             {editingAboutme ? (
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => {
-                  saveAboutme();
-                  setEditingAboutme(false);
-                }}>
+                <Button size="sm" onClick={saveAboutme}>
                   <Save className="h-4 w-4" />
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => {
@@ -304,10 +301,7 @@ const saveAboutme = async () => {
             <CardTitle>Etiquetas</CardTitle>
             {editingTags ? (
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => {
-                  saveTags();
-                  setEditingTags(false);
-                }}>
+                <Button size="sm" onClick={saveTags}>
                   <Save className="h-4 w-4" />
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => {

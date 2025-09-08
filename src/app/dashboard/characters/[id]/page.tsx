@@ -498,7 +498,17 @@ export default function CharacterProfilePage() {
             <TabsContent value="feed">
               <div className="space-y-6">
                 {/* Aquí se mostrará el feed con posts propios, de amigos y tramas nuevas */}
-                <FeedContent character={character} allCharacters={allCharacters} />
+                <FeedContent 
+                  character={character} 
+                  allCharacters={allCharacters}
+                  editingPost={editingPost}
+                  setEditingPost={setEditingPost}
+                  editContent={editContent}
+                  setEditContent={setEditContent}
+                  handleEditPost={handleEditPost}
+                  handleDeletePost={handleDeletePost}
+                  handleChangePostVisibility={handleChangePostVisibility}
+                />
               </div>
             </TabsContent>
           </Tabs>
@@ -509,7 +519,27 @@ export default function CharacterProfilePage() {
 }
 
 // Componente para el Feed
-function FeedContent({ character, allCharacters }: { character: Character, allCharacters: Record<string, Character> }) {
+function FeedContent({ 
+  character, 
+  allCharacters, 
+  editingPost, 
+  setEditingPost, 
+  editContent, 
+  setEditContent, 
+  handleEditPost, 
+  handleDeletePost,
+  handleChangePostVisibility
+}: { 
+  character: Character, 
+  allCharacters: Record<string, Character>,
+  editingPost: string | null,
+  setEditingPost: (id: string | null) => void,
+  editContent: string,
+  setEditContent: (content: string) => void,
+  handleEditPost: () => Promise<void>,
+  handleDeletePost: (id: string) => Promise<void>,
+  handleChangePostVisibility: (postId: string, visibility: 'public' | 'friends') => Promise<void>
+}) {
   const [friends, setFriends] = useState<string[]>([]);
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -741,11 +771,49 @@ function FeedContent({ character, allCharacters }: { character: Character, allCh
                         </Card>
                       </Link>
                     </div>
+                  ) : editingPost === item.id ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="min-h-[100px]"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleEditPost}>Guardar</Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingPost(null)}>Cancelar</Button>
+                      </div>
+                    </div>
                   ) : (
                     <p className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: item.content }} />
                   )}
                 </div>
               </div>
+              {/* Menú dropdown para posts propios */}
+              {isPost(item) && item.characterId === character?.id && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        setEditingPost(item.id);
+                        setEditContent(item.content);
+                      }}
+                    >
+                      Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleChangePostVisibility(item.id, item.visibility === 'public' ? 'friends' : 'public')}>
+                      Cambiar a {item.visibility === 'public' ? 'Amigos' : 'Público'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDeletePost(item.id)} className="text-destructive">
+                      Eliminar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </CardHeader>
           {isPost(item) && (

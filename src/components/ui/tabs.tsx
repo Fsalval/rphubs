@@ -13,17 +13,20 @@ type TabsProps = {
   defaultValue?: string;
   value?: string;
   onValueChange?: (value: string) => void;
+  className?: string;
 };
 
-const Tabs = ({ children, defaultValue, value, onValueChange }: TabsProps) => {
+const Tabs = ({ children, defaultValue, value, onValueChange, className = '' }: TabsProps) => {
   const [internalValue, setInternalValue] = React.useState(defaultValue || '');
   const selectedValue = value !== undefined ? value : internalValue;
   const handleChange = onValueChange || setInternalValue;
 
   return (
-    <TabsContext.Provider value={{ value: selectedValue, onValueChange: handleChange }}>
-      {children}
-    </TabsContext.Provider>
+    <div className={className}>
+      <TabsContext.Provider value={{ value: selectedValue, onValueChange: handleChange }}>
+        {children}
+      </TabsContext.Provider>
+    </div>
   );
 };
 
@@ -69,8 +72,14 @@ const TabsTrigger = ({ value, children, onClick, ...props }: TabsTriggerProps) =
   );
 };
 
-type TabsContentProps = { value: string; children: React.ReactNode; forceMount?: boolean };
-const TabsContent = ({ value, children, forceMount }: TabsContentProps) => {
+type TabsContentProps = { 
+  value: string; 
+  children: React.ReactNode; 
+  forceMount?: boolean; 
+  className?: string; 
+};
+
+const TabsContent = ({ value, children, forceMount, className = '' }: TabsContentProps) => {
   const context = useContext(TabsContext);
   if (!context) throw new Error('TabsContent must be used within Tabs');
 
@@ -80,7 +89,7 @@ const TabsContent = ({ value, children, forceMount }: TabsContentProps) => {
     return null;
   }
 
-  return <div role="tabpanel">{children}</div>;
+  return <div role="tabpanel" className={className}>{children}</div>;
 };
 
 export { Tabs, TabsList, TabsTrigger, TabsContent };
