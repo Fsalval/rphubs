@@ -28,7 +28,6 @@ import {
 } from 'lucide-react';
 import { ref, onValue, set, remove } from 'firebase/database';
 import { db, auth } from '@/lib/firebase'; // Asegúrate de importar auth
-import { useCharacter } from '../../../layout';
 import Link from 'next/link';
 import Image from 'next/image';
 
