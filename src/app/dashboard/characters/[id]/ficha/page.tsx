@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
-import { Edit, Save, X, Plus, Trash2, MoreHorizontal, Eye, Users, Lock } from 'lucide-react';
+import { Edit, Save, X, Plus, Trash2, Eye, Users, Lock, Camera } from 'lucide-react';
 import { useCharacter } from '../layout';
 import { db } from '@/lib/firebase';
-import { ref, update } from 'firebase/database';
+import { ref, update, push } from 'firebase/database';
+import { ImageUpload } from '@/components/ui/image-upload';
 
 // Componente para selector de visibilidad
 const VisibilitySelector = ({ 
@@ -85,19 +87,18 @@ export default function FichaPage() {
   const [personalidad, setPersonalidad] = useState('');
   const [historia, setHistoria] = useState('');
   const [extras, setExtras] = useState('');
-  const [enlaces, setEnlaces] = useState<any[]>([]);
+  const [enlaces, setEnlaces] = useState<Array<{name: string, url: string}>>([]);
   const [nuevoEnlace, setNuevoEnlace] = useState('');
   const [nuevoTag, setNuevoTag] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [aboutme, setAboutme] = useState('');
+  const [avatarPhoto, setAvatarPhoto] = useState<string>('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   
   // Estados para visibilidad
   const [personalidadVisibility, setPersonalidadVisibility] = useState<'public' | 'friends' | 'private'>('public');
   const [historiaVisibility, setHistoriaVisibility] = useState<'public' | 'friends' | 'private'>('public');
   const [extrasVisibility, setExtrasVisibility] = useState<'public' | 'friends' | 'private'>('public');
-  const [enlacesVisibility, setEnlacesVisibility] = useState<'public' | 'friends' | 'private'>('public');
-  const [aboutmeVisibility, setAboutmeVisibility] = useState<'public' | 'friends' | 'private'>('public');
-  const [tagsVisibility, setTagsVisibility] = useState<'public' | 'friends' | 'private'>('public');
 
   // Cargar datos del personaje
 // Cargar datos del personaje
@@ -109,20 +110,57 @@ useEffect(() => {
     setEnlaces(character.socialLinks || []); // Para enlaces sociales
     setTags(character.tags || []); // Para etiquetas
     setAboutme(character.profile || ''); // Para About me 
+    setAvatarPhoto(character.avatarPhoto || ''); // Para foto de avatar
     
     // Cargar configuraciones de visibilidad
     setPersonalidadVisibility(character.personalidadVisibility || 'public');
     setHistoriaVisibility(character.historiaVisibility || character.tramaVisibility || 'public');
     setExtrasVisibility(character.extrasVisibility || 'public');
-    setEnlacesVisibility(character.enlacesVisibility || 'public');
-    setAboutmeVisibility(character.aboutmeVisibility || 'public');
-    setTagsVisibility(character.tagsVisibility || 'public');
   }
 }, [character]);
+  // Función para subir foto de avatar
+  const handleAvatarUpload = async (imageUrl: string) => {
+    if (!character) return;
+    
+    setUploadingPhoto(true);
+    try {
+      // Actualizar la foto de avatar del personaje
+      const updates = { 
+        avatarPhoto: imageUrl,
+        avatarUpdatedAt: Date.now()
+      };
+      
+      await update(ref(db, `characters/${character.id}`), updates);
+      updateCharacterData(updates);
+      setAvatarPhoto(imageUrl);
+      
+      // Crear un post en el feed con la nueva foto
+      const feedPost = {
+        characterId: character.id,
+        characterName: character.name,
+        content: 'Nueva foto de avatar',
+        image: imageUrl,
+        type: 'avatar',
+        timestamp: Date.now(),
+        reactions: {
+          heart: 0
+        },
+        visibility: 'public'
+      };
+      
+      await push(ref(db, 'feed'), feedPost);
+      
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   // Función para manejar cambios de visibilidad
   const handleVisibilityChange = async (field: string, visibility: 'public' | 'friends' | 'private') => {
     try {
-      const updates: any = {};
+      const updates: Record<string, 'public' | 'friends' | 'private'> = {};
       updates[`${field}Visibility`] = visibility;
       
       await update(ref(db, `characters/${character.id}`), updates);
@@ -138,15 +176,6 @@ useEffect(() => {
           break;
         case 'extras':
           setExtrasVisibility(visibility);
-          break;
-        case 'enlaces':
-          setEnlacesVisibility(visibility);
-          break;
-        case 'aboutme':
-          setAboutmeVisibility(visibility);
-          break;
-        case 'tags':
-          setTagsVisibility(visibility);
           break;
       }
     } catch (error) {
@@ -291,6 +320,58 @@ const saveAboutme = async () => {
               )}
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Foto de Avatar */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Camera className="h-4 w-4" />
+            Foto de Avatar
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {avatarPhoto ? (
+              <div className="relative">
+                <Image 
+                  src={avatarPhoto} 
+                  alt="Avatar" 
+                  width={400}
+                  height={192}
+                  className="w-full h-48 object-cover rounded-lg"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="absolute top-2 right-2 bg-white/80 hover:bg-white"
+                  onClick={() => setAvatarPhoto('')}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <Camera className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                <p className="text-sm text-muted-foreground mb-2">
+                  No hay foto de avatar
+                </p>
+              </div>
+            )}
+            
+            <ImageUpload
+              value={avatarPhoto}
+              onChange={handleAvatarUpload}
+              disabled={uploadingPhoto}
+              variant="banner"
+              placeholder={avatarPhoto ? 'Cambiar Foto' : 'Subir Foto'}
+            />
+            
+            <p className="text-xs text-muted-foreground text-center">
+              La foto aparecerá en el feed y reemplazará la anterior
+            </p>
+          </div>
         </CardContent>
       </Card>
 

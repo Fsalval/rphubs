@@ -111,7 +111,12 @@ export interface Post {
   charHandle: string;
   avatarUrl: string;
   characterId?: string;
-  type?: string;
+  type?: 'post' | 'avatar'; // Tipo de post: normal o foto de avatar
+  image?: string; // URL de la imagen si es un post con foto
+  reactions?: {
+    heart?: number;
+    [key: string]: number | undefined;
+  };
 }
 
 /**

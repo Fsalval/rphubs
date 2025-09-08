@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,11 +21,12 @@ import { Character, Post } from '@/lib/types';
 
 // Tipos locales para el feed
 interface FeedPost extends Post {
-  type: 'post';
+  type: 'post' | 'avatar';
   characterId: string;
   characterName: string;
   characterUsername: string;
   characterAvatar: string;
+  image?: string; // Para fotos de avatar
 }
 
 interface FeedTrama {
@@ -130,7 +132,7 @@ export default function CharacterProfilePage() {
         heartbreaks: 0,
         laughs: 0,
         characterId: character.id,
-        type: 'post'
+        type: 'post' as const
       };
 
       await set(newPostRef, newPost);
@@ -546,13 +548,22 @@ function FeedContent({
 
   // Función para manejar reacciones en el feed
   const handleFeedReaction = async (item: FeedItem, reactionType: 'likes' | 'hearts' | 'heartbreaks' | 'laughs') => {
-    if (item.type !== 'post') return; // Solo posts tienen reacciones
+    if (item.type === 'trama') return; // Las tramas no tienen reacciones
 
     try {
       const currentCount = item[reactionType] || 0;
       const newCount = currentCount + 1;
       
-      await set(ref(db, `characters/${item.characterId}/posts/${item.id.replace(/^(own-post-|friend-post-.*-)/, '')}/${reactionType}`), newCount);
+      // Determinar el path según el tipo de post
+      if (item.id.startsWith('feed-')) {
+        // Post de avatar del feed general
+        const feedId = item.id.replace('feed-', '');
+        await set(ref(db, `feed/${feedId}/reactions/${reactionType === 'hearts' ? 'heart' : reactionType}`), newCount);
+      } else {
+        // Post normal del personaje
+        const postId = item.id.replace(/^(own-post-|friend-post-.*-)/, '');
+        await set(ref(db, `characters/${item.characterId}/posts/${postId}/${reactionType}`), newCount);
+      }
 
       // Actualizar estado local
       setFeedItems(feedItems.map(feedItem => 
@@ -578,7 +589,7 @@ function FeedContent({
     return () => unsubscribe();
   }, [character?.id]);
 
-  // Cargar el feed: posts propios + amigos + tramas nuevas
+  // Cargar el feed: posts propios + amigos + tramas nuevas + posts de avatar
   useEffect(() => {
     if (!character?.id) return;
 
@@ -597,12 +608,55 @@ function FeedContent({
             items.push({
               ...postData,
               id: `own-post-${postId}`,
-              type: 'post' as const,
+              type: (postData.type as 'post' | 'avatar') || 'post',
               characterName: character.name,
               characterUsername: character.username,
               characterAvatar: character.avatarUrl,
               characterId: character.id,
+              image: postData.image, // Para fotos de avatar
             } as FeedPost);
+          });
+        }
+
+        // 1.5. Posts de avatar del feed general (tuyo y de amigos)
+        const feedRef = ref(db, 'feed');
+        const feedSnap = await get(feedRef);
+        if (feedSnap.exists()) {
+          const feedData = feedSnap.val();
+          Object.entries(feedData).forEach(([feedId, feedPost]) => {
+            const feedPostData = feedPost as {
+              type: string;
+              characterId: string;
+              characterName: string;
+              content: string;
+              timestamp: number;
+              reactions?: { heart?: number };
+              visibility: string;
+              image: string;
+            };
+            // Solo incluir posts de avatar tuyo o de amigos
+            if (feedPostData.type === 'avatar' && 
+                (feedPostData.characterId === character.id || friends.includes(feedPostData.characterId))) {
+              items.push({
+                id: `feed-${feedId}`,
+                content: feedPostData.content,
+                time: feedPostData.timestamp,
+                likes: 0,
+                hearts: feedPostData.reactions?.heart || 0,
+                heartbreaks: 0,
+                laughs: 0,
+                visibility: feedPostData.visibility as 'public' | 'friends' | 'private',
+                charName: feedPostData.characterName,
+                charHandle: feedPostData.characterName,
+                avatarUrl: character.avatarUrl,
+                type: 'avatar' as const,
+                characterName: feedPostData.characterName,
+                characterUsername: feedPostData.characterName,
+                characterAvatar: character.avatarUrl,
+                characterId: feedPostData.characterId,
+                image: feedPostData.image,
+              } as FeedPost);
+            }
           });
         }
 
@@ -784,7 +838,20 @@ function FeedContent({
                       </div>
                     </div>
                   ) : (
-                    <p className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: item.content }} />
+                    <div className="space-y-3">
+                      <p className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: item.content }} />
+                      {isPost(item) && item.type === 'avatar' && item.image && (
+                        <div className="rounded-lg overflow-hidden">
+                          <Image 
+                            src={item.image} 
+                            alt="Foto de avatar" 
+                            width={400}
+                            height={300}
+                            className="w-full max-h-96 object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -818,38 +885,53 @@ function FeedContent({
           </CardHeader>
           {isPost(item) && (
             <div className="px-6 pb-6 flex justify-around text-muted-foreground border-t pt-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="flex items-center gap-2 hover:text-blue-500"
-                onClick={() => handleFeedReaction(item, 'likes')}
-              >
-                <ThumbsUp className="h-4 w-4" /> {item.likes || 0}
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="flex items-center gap-2 hover:text-red-500"
-                onClick={() => handleFeedReaction(item, 'hearts')}
-              >
-                <Heart className="h-4 w-4" /> {item.hearts || 0}
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="flex items-center gap-2 hover:text-orange-500"
-                onClick={() => handleFeedReaction(item, 'heartbreaks')}
-              >
-                <Frown className="h-4 w-4" /> {item.heartbreaks || 0}
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="flex items-center gap-2 hover:text-yellow-500"
-                onClick={() => handleFeedReaction(item, 'laughs')}
-              >
-                <Laugh className="h-4 w-4" /> {item.laughs || 0}
-              </Button>
+              {item.type === 'avatar' ? (
+                // Solo mostrar corazón para fotos de avatar
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="flex items-center gap-2 hover:text-red-500"
+                  onClick={() => handleFeedReaction(item, 'hearts')}
+                >
+                  <Heart className="h-4 w-4" /> {item.hearts || 0}
+                </Button>
+              ) : (
+                // Mostrar todas las reacciones para posts normales
+                <>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="flex items-center gap-2 hover:text-blue-500"
+                    onClick={() => handleFeedReaction(item, 'likes')}
+                  >
+                    <ThumbsUp className="h-4 w-4" /> {item.likes || 0}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="flex items-center gap-2 hover:text-red-500"
+                    onClick={() => handleFeedReaction(item, 'hearts')}
+                  >
+                    <Heart className="h-4 w-4" /> {item.hearts || 0}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="flex items-center gap-2 hover:text-orange-500"
+                    onClick={() => handleFeedReaction(item, 'heartbreaks')}
+                  >
+                    <Frown className="h-4 w-4" /> {item.heartbreaks || 0}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="flex items-center gap-2 hover:text-yellow-500"
+                    onClick={() => handleFeedReaction(item, 'laughs')}
+                  >
+                    <Laugh className="h-4 w-4" /> {item.laughs || 0}
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </Card>
