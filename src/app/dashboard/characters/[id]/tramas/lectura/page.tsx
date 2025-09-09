@@ -10,6 +10,9 @@ import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import Link from 'next/link';
 
+// Importar la librería para generar EPUB
+import { EpubGen } from 'epub-gen-memory';
+
 export default function TramaLecturaPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -82,61 +85,79 @@ export default function TramaLecturaPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${trama.name.replace(/\s+/g, '_')}.txt`;
+      a.download = `${trama.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } else {
-      // Descarga como EPUB básico
-      const createEpubContent = () => {
-        const title = trama.name;
-        const author = trama.author?.name || 'Autor desconocido';
-        
-        let content = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-    <title>${title}</title>
-    <meta charset="UTF-8"/>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
-        h1 { color: #333; }
-        .author { color: #666; font-style: italic; }
-        .response { margin: 20px 0; }
-        .response-author { font-weight: bold; color: #444; }
-        .chapter { text-align: center; margin: 30px 0; font-weight: bold; color: #2c5aa0; }
-    </style>
-</head>
-<body>
-    <h1>${title}</h1>
-    <p class="author">Por: ${author}</p>
-    <div>${trama.content.replace(/\n/g, '<br/>')}</div>`;
+      // Descarga como EPUB válido
+      try {
+        // Preparar opciones para EPUB
+        const epubOptions = {
+          title: trama.name,
+          author: trama.author?.name || 'Autor desconocido',
+          publisher: 'Tu Aplicación',
+          date: new Date(trama.time || new Date()).toISOString(),
+          chapters: [] as any[]
+        };
 
-        responses.forEach((response: any) => {
-          if (response.isChapter) {
-            content += `<div class="chapter">--- CAPÍTULO ---</div>`;
-          }
-          content += `<div class="response">
-            <p class="response-author">${response.author?.name || 'Anónimo'}:</p>
-            <p>${response.content.replace(/\n/g, '<br/>')}</p>
-          </div>`;
+        // Agregar capítulo principal
+        epubOptions.chapters.push({
+          title: 'Introducción',
+          content: `
+            <h1>${trama.name}</h1>
+            <p><i>Por: ${trama.author?.name || 'Autor desconocido'}</i></p>
+            <p><small>Fecha: ${new Date(trama.time || new Date()).toLocaleDateString()}</small></p>
+            <div>${trama.content.replace(/\n/g, '<br/>')}</div>
+          `
         });
 
-        content += `</body></html>`;
-        return content;
-      };
+        // Agregar respuestas como capítulos
+        responses.forEach((response: any, index) => {
+          let title = `Contribución ${index + 1}`;
+          let content = '';
+          
+          // Si es capítulo, usar título especial
+          if (response.isChapter) {
+            const chapterNum = responses.filter((r: any, i: number) => r.isChapter && i <= index).length;
+            title = `Capítulo ${chapterNum}`;
+            content += `<div style="text-align: center; margin: 20px 0; font-weight: bold; color: #2c5aa0;">
+              --- CAPÍTULO ---
+            </div>`;
+          }
+          
+          // Contenido de la respuesta
+          content += `
+            <h2>${response.author?.name || 'Anónimo'}</h2>
+            <p><small>Fecha: ${new Date(response.time).toLocaleDateString()}</small></p>
+            <div>${response.content.replace(/\n/g, '<br/>')}</div>
+          `;
+          
+          epubOptions.chapters.push({
+            title,
+            content
+          });
+        });
 
-      const epubContent = createEpubContent();
-      const blob = new Blob([epubContent], { type: 'application/epub+zip' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${trama.name.replace(/\s+/g, '_')}.epub`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+        // Generar EPUB
+        const epubBuffer = await EpubGen.generateEpub(epubOptions);
+        
+        // Crear y descargar archivo
+        const blob = new Blob([epubBuffer], { type: 'application/epub+zip' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${trama.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.epub`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+      } catch (error) {
+        console.error('Error generando EPUB:', error);
+        alert('Error al generar el archivo EPUB. Por favor, intenta descargar como TXT.');
+      }
     }
   };
 
