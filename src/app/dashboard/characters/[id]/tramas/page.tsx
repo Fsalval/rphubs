@@ -1,5 +1,8 @@
 // src/app/dashboard/characters/[id]/tramas/page.tsx
 'use client';
+
+export const runtime = 'edge';
+
 import { useState, useEffect } from 'react';
 import { Button } from '../../../../../components/ui/button';
 import Textarea from '../../../../../components/ui/textarea';

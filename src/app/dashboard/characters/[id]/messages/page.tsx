@@ -1,6 +1,8 @@
 // src/app/dashboard/characters/[id]/messages/page.tsx
 'use client';
 
+export const runtime = 'edge';
+
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '../../../../../components/ui/button';

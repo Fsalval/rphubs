@@ -1,6 +1,8 @@
 // src/app/dashboard/characters/[id]/page.tsx
 'use client';
 
+export const runtime = 'edge';
+
 import { useState, useEffect } from 'react';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
