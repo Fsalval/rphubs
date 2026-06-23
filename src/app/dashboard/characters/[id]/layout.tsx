@@ -1,6 +1,6 @@
 // src/app/dashboard/characters/[id]/layout.tsx
 'use client';
-
+export const runtime = 'edge';
 import { useEffect, useState, createContext, useContext } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import { auth, db } from '../../../../lib/firebase';
