@@ -1,6 +1,6 @@
 // src/app/dashboard/characters/page.tsx
 'use client';
-
+export const runtime = 'edge';
 import { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avatar';
 import { Button } from '../../../components/ui/button';
