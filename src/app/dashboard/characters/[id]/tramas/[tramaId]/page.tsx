@@ -1,7 +1,6 @@
 // src/app/dashboard/characters/[id]/tramas/[tramaId]/page.tsx
 'use client';
 
-export const runtime = 'edge';
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';

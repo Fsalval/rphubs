@@ -1,6 +1,6 @@
 'use client';
 
-export const runtime = 'edge';
+
 
 import { redirect } from 'next/navigation';
 

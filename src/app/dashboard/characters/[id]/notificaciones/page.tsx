@@ -1,7 +1,6 @@
 // src/app/dashboard/characters/[id]/notificaciones/page.tsx
 'use client';
 
-export const runtime = 'edge';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../../components/ui/card';

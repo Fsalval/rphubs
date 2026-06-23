@@ -1,6 +1,6 @@
 'use client';
 
-export const runtime = 'edge';
+
 
 {/*# RPHubs - Actualizado: 30 ago 2025 (fuerza de build)*/}
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
