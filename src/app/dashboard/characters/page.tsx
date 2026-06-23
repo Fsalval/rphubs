@@ -35,7 +35,7 @@ export default function CharactersPage() {
           setUser(currentUser);
         } else {
           // Si no hay usuario, redirigir
-          window.location.href = '/login';
+          window.location.href = '/app'; // Redirigir a la página de inicio o login
         }
       });
 

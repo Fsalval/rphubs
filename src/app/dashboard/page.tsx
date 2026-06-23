@@ -64,7 +64,7 @@ En RPHubs creemos que el roleplay es un arte que trasciende fronteras. Aquí cad
         setUser(currentUser);
         loadCharacters(currentUser.uid);
       } else {
-        router.push('/login');
+        router.push('/app');
       }
       setLoading(false);
     });
@@ -96,7 +96,7 @@ En RPHubs creemos que el roleplay es un arte que trasciende fronteras. Aquí cad
     setLoading(true); // Aunque ya no esté en pantalla, es buena práctica
     try {
       await signOut(auth);
-      router.push('/login');
+      router.push('/app');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
       setLoading(false);
