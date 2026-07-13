@@ -11,7 +11,7 @@ import { Badge } from '../../../../../components/ui/badge';
 import { Send, MessageSquare, X, Minus } from 'lucide-react';
 import { ref, onValue, push, update, set, serverTimestamp, get, off } from 'firebase/database';
 import { db } from '../../../../../lib/firebase';
-import { useCharacter } from '../layout';
+import { useCharacter } from '../../../../../context/CharacterContext';
 import { Character } from '../../../../../lib/types';
 
 interface Message {
@@ -34,10 +34,7 @@ interface Chat {
 }
 
 export default function FloatingChat() {
-  const { character, allCharacters } = useCharacter() as {
-    character: Character | null;
-    allCharacters: Character[];
-  };
+  const { character, allCharacters } = useCharacter();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [chats, setChats] = useState<Chat[]>([]);

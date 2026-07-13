@@ -14,7 +14,7 @@ import { Send, MoreVertical, MessageSquare, Trash2 } from 'lucide-react';
 import { ref, onValue, push, update, set, serverTimestamp, get, off, remove } from 'firebase/database';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../../../components/ui/dropdown-menu';
 import { db } from '../../../../../lib/firebase';
-import { useCharacter } from '../layout';
+import { useCharacter } from '../../../../../context/CharacterContext';
 
 interface Message {
   id: string;

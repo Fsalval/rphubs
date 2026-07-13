@@ -14,7 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Search, UserPlus, Users, Check, X, ChevronDown } from 'lucide-react';
 import { ref, onValue, set, remove, get } from 'firebase/database';
 import { db } from '../../../../../lib/firebase';
-import { useCharacter } from '../layout';
+import { useCharacter } from '../../../../../context/CharacterContext';
 
 interface Amigo {
   id: string;

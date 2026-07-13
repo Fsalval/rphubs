@@ -9,7 +9,7 @@ import { Input } from '../../../../../components/ui/input';
 import { Textarea } from '../../../../../components/ui/textarea';
 import { Badge } from '../../../../../components/ui/badge';
 import { Edit, Save, Trash2, Send, Plus, X } from 'lucide-react';
-import { useCharacter } from '../layout';
+import { useCharacter } from '../../../../../context/CharacterContext';
 import { ref, push, onValue, remove, update } from 'firebase/database';
 import { db } from '../../../../../lib/firebase';
 import { useRouter } from 'next/navigation';

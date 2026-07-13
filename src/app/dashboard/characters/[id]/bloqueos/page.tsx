@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../../../compone
 import { Button } from '../../../../../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../../../../../components/ui/avatar';
 import { UserX } from 'lucide-react';
-import { useCharacter } from '../layout';
+import { useCharacter } from '../../../../../context/CharacterContext';
 import { db } from '../../../../../lib/firebase';
 import { ref, onValue, update } from 'firebase/database';
 

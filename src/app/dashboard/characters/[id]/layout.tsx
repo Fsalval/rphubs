@@ -1,6 +1,6 @@
-// src/app/dashboard/characters/[id]/layout.tsx
 'use client';
-import { useEffect, useState, createContext, useContext } from 'react';
+
+import { useEffect, useState } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import { auth, db } from '../../../../lib/firebase';
 import { ref, onValue, get, set, remove } from 'firebase/database';
@@ -10,16 +10,26 @@ import { Search, Settings, Bell, Mail, Palette, Home } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
 import { Badge } from '../../../../components/ui/badge';
-import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '../../../../components/ui/dropdown-menu';
-import { useTheme, type Theme } from '../../../../lib/theme-context';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '../../../../components/ui/dropdown-menu';
+import { useTheme } from '../../../../lib/theme-context';
 import { Character } from '../../../../lib/types';
 import { User } from 'firebase/auth';
 import FloatingChat from './components/FloatingChat';
+import { CharacterProvider } from '../../../../context/CharacterContext';
 
-// Contexto para compartir el personaje
-const CharacterContext = createContext<any>(null);
 
-export default function CharacterLayout({ children }: { children: React.ReactNode }) {
+export default function CharacterLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { id } = useParams();
   const pathname = usePathname();
   const characterId = Array.isArray(id) ? id[0] : id;
@@ -30,11 +40,12 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
   const [isOwner, setIsOwner] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [allCharacters, setAllCharacters] = useState<any[]>([]);
+  const [allCharacters, setAllCharacters] = useState<Array<Record<string, unknown>>>([]);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const [friendRequestsCount, setFriendRequestsCount] = useState(0);
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [messagesPreview, setMessagesPreview] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Array<Record<string, unknown>>>([]);
+  const [messagesPreview, setMessagesPreview] = useState<Array<Record<string, unknown>>>([]);
+
 
   // Detectar usuario
   useEffect(() => {
@@ -84,7 +95,11 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
         let count = 0;
         const previews: any[] = [];
         Object.values(data).forEach((chat: any) => {
-          if (chat.lastMessage && chat.lastMessage.senderId !== characterId && !chat.lastMessage.read) {
+          if (
+            chat.lastMessage &&
+            chat.lastMessage.senderId !== characterId &&
+            !chat.lastMessage.read
+          ) {
             count++;
             previews.push({
               id: chat.chatId,
@@ -104,40 +119,44 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
   }, [characterId]);
 
   // Contar solicitudes de amistad
+  useEffect(() => {
+    if (!characterId) return;
+    const requestsRef = ref(db, `friendRequests/${characterId}`);
+    const unsubscribe = onValue(requestsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const requests = Object.entries(data)
+          .filter(([key, req]: [string, any]) => req.status === 'pending')
+          .map(([key, req]: [string, any]) => ({
+            id: key,
+            senderName: req.fromCharacterName, // ✅ CORREGIDO
+            senderUsername: req.fromCharacterUsername, // ✅ CORREGIDO
+            senderAvatar: req.fromCharacterAvatar, // ✅ CORREGIDO
+            time: req.timestamp, // ✅ CORREGIDO
+          }));
+        setFriendRequestsCount(requests.length);
+        setNotifications(requests);
+      } else {
+        setNotifications([]);
+        setFriendRequestsCount(0);
+      }
+    });
+    return () => unsubscribe();
+  }, [characterId]);
 
-    useEffect(() => {
-      if (!characterId) return;
-      const requestsRef = ref(db, `friendRequests/${characterId}`);
-      const unsubscribe = onValue(requestsRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          const requests = Object.entries(data)
-            .filter(([key, req]: [string, any]) => req.status === 'pending')
-            .map(([key, req]: [string, any]) => ({
-              id: key,
-              senderName: req.fromCharacterName, // ✅ CORREGIDO
-              senderUsername: req.fromCharacterUsername, // ✅ CORREGIDO
-              senderAvatar: req.fromCharacterAvatar, // ✅ CORREGIDO
-              time: req.timestamp, // ✅ CORREGIDO
-            }));
-          setFriendRequestsCount(requests.length);
-          setNotifications(requests);
-        } else {
-          setNotifications([]);
-          setFriendRequestsCount(0);
-        }
-      });
-      return () => unsubscribe();
-    }, [characterId]);
-
-    
   // Función para aceptar solicitud de amistad
   const acceptFriendRequest = async (senderId: string) => {
     if (!characterId) return;
-    
+
     try {
-      await set(ref(db, `characters/${characterId}/friends/${senderId}`), true);
-      await set(ref(db, `characters/${senderId}/friends/${characterId}`), true);
+      await set(
+        ref(db, `characters/${characterId}/friends/${senderId}`),
+        true,
+      );
+      await set(
+        ref(db, `characters/${senderId}/friends/${characterId}`),
+        true,
+      );
       await remove(ref(db, `friendRequests/${characterId}/${senderId}`));
       console.log('Solicitud de amistad aceptada');
     } catch (error) {
@@ -148,7 +167,7 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
   // Función para rechazar solicitud de amistad
   const rejectFriendRequest = async (senderId: string) => {
     if (!characterId) return;
-    
+
     try {
       await remove(ref(db, `friendRequests/${characterId}/${senderId}`));
       console.log('Solicitud de amistad rechazada');
@@ -166,14 +185,23 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
   };
 
   if (!character) {
-    return <div className="flex items-center justify-center min-h-screen">Cargando personaje...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Cargando personaje...
+      </div>
+    );
   }
 
-  const showNotifications = pathname === `/dashboard/characters/${characterId}`;
-
   return (
-    // ✅ CAMBIADO: Agregado updateCharacterData al Provider
-    <CharacterContext.Provider value={{ character, isOwner, allCharacters, newMessagesCount, updateCharacterData }}>
+    <CharacterProvider
+      value={{
+        character,
+        isOwner,
+        allCharacters,
+        newMessagesCount,
+        updateCharacterData,
+      }}
+    >
       <div className="min-h-screen bg-secondary">
         {/* Header */}
         <header className="bg-background/80 backdrop-blur-sm sticky top-0 z-20 border-b">
@@ -227,7 +255,9 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
                           <div className="flex items-center gap-3 mb-2">
                             <Avatar className="h-8 w-8">
                               <AvatarImage src={req.senderAvatar} />
-                              <AvatarFallback>{req.senderName?.charAt(0) || '?'}</AvatarFallback>
+                              <AvatarFallback>
+                                {req.senderName?.charAt(0) || '?'}
+                              </AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                               <p className="text-sm font-medium">{req.senderName}</p>
@@ -293,12 +323,12 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
 
                 {/* Configuración */}
                 <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+                  <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
-                    <Settings className="h-5 w-5" />
+                      <Settings className="h-5 w-5" />
                     </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
                     <DropdownMenuLabel className="flex items-center gap-2">
                       <Palette className="h-4 w-4" />
                       Temas
@@ -310,7 +340,7 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
                         onClick={() => setTheme(t.id)}
                         className="flex items-center gap-3"
                       >
-                        <div 
+                        <div
                           className="w-4 h-4 rounded-full border border-border"
                           style={{ backgroundColor: t.colors.accent }}
                         />
@@ -318,10 +348,14 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
                           <div className="flex items-center gap-2">
                             <span>{t.name}</span>
                             {t.isPremium && (
-                              <Badge variant="secondary" className="text-xs">Premium</Badge>
+                              <Badge variant="secondary" className="text-xs">
+                                Premium
+                              </Badge>
                             )}
                             {theme === t.id && (
-                              <Badge variant="default" className="text-xs">Activo</Badge>
+                              <Badge variant="default" className="text-xs">
+                                Activo
+                              </Badge>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground">{t.description}</p>
@@ -330,12 +364,15 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
                     ))}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem>
-                      <Link href="/dashboard/characters" className="w-full flex items-center gap-2">
+                      <Link
+                        href="/dashboard/characters"
+                        className="w-full flex items-center gap-2"
+                      >
                         <Home className="h-4 w-4" />
                         Salir del personaje
                       </Link>
                     </DropdownMenuItem>
-                </DropdownMenuContent>
+                  </DropdownMenuContent>
                 </DropdownMenu>
               </div>
             </div>
@@ -347,9 +384,14 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
                   Buscando: <strong>{searchQuery}</strong>
                 </div>
                 {allCharacters
-                  .filter((char) =>
-                    char.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    char.username.toLowerCase().includes(searchQuery.toLowerCase())
+                  .filter(
+                    (char) =>
+                      char.name
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase()) ||
+                      char.username
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase()),
                   )
                   .slice(0, 5)
                   .map((char) => (
@@ -451,28 +493,18 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* Contenido */}
-        <main className="container mx-auto p-6">
-          {children}
-        </main>
+        <main className="container mx-auto p-6">{children}</main>
 
         <footer className="bg-background/80 backdrop-blur-sm border-t border-border py-4">
           <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
             <p>© 2025 rphubs. Todos los derechos reservados.</p>
           </div>
         </footer>
-        
+
         {/* Chat flotante disponible en todas las vistas */}
         <FloatingChat />
       </div>
-    </CharacterContext.Provider>
+    </CharacterProvider>
   );
 }
 
-// Hook para usar el personaje en cualquier vista
-export const useCharacter = () => {
-  const context = useContext(CharacterContext);
-  if (!context) {
-    throw new Error('useCharacter debe usarse dentro de CharacterLayout');
-  }
-  return context;
-};

@@ -13,7 +13,7 @@ import { Textarea } from '../../../../../../components/ui/textarea';
 import { Label } from '../../../../../../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../../../components/ui/tabs';
 import { Plus, ExternalLink, X, User, Users, Link as LinkIcon } from 'lucide-react';
-import { useCharacter } from '../../layout';
+import { useCharacter } from '../../../../../context/CharacterContext';
 import { ref, onValue, push, update, remove } from 'firebase/database';
 import { db } from '../../../../../../lib/firebase';
 import { Character } from '../../../../../../lib/types';

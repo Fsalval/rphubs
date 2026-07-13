@@ -11,7 +11,7 @@ import { Badge } from '../../../../components/ui/badge';
 import { MoreHorizontal, ThumbsUp, Frown, Laugh, Heart, Eye, Users } from 'lucide-react';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from '../../../../components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../components/ui/tabs';
-import { useCharacter } from './layout';
+import { useCharacter } from '../../../../context/CharacterContext';
 import { sanitize } from '../../../../lib/sanitize';
 import { ref, push, set, onValue, remove, get } from 'firebase/database';
 import { db } from '../../../../lib/firebase';
