@@ -83,43 +83,45 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
   }, [characterId]);
 
   // Verificar estado de amistad y solicitudes
-  useEffect(() => {
-    if (!characterId || !currentUserCharacter) {
-      setFriendshipStatus('none');
-      return;
-    }
-
-    const checkFriendship = async () => {
-      try {
-        const friends1 = await get(ref(db, `characters/${characterId}/friends/${currentUserCharacter.id}`));
-        const friends2 = await get(ref(db, `characters/${currentUserCharacter.id}/friends/${characterId}`));
-
-        if (friends1.exists() && friends2.exists()) {
-          setFriendshipStatus('friends');
-          return;
-        }
-
-        const sent = await get(ref(db, `characters/${characterId}/friendRequests/${currentUserCharacter.id}`));
-        if (sent.exists() && sent.val() === true) {
-          setFriendshipStatus('pending_sent');
-          return;
-        }
-
-        const received = await get(ref(db, `characters/${currentUserCharacter.id}/friendRequests/${characterId}`));
-        if (received.exists() && received.val() === true) {
-          setFriendshipStatus('pending_received');
-          return;
-        }
-
+    useEffect(() => {
+      if (!characterId || !currentUserCharacter) {
         setFriendshipStatus('none');
-      } catch (error) {
-        console.error('Error checking friendship status:', error);
-        setFriendshipStatus('none');
+        return;
       }
-    };
 
-    checkFriendship();
-  }, [characterId, currentUserCharacter]);
+      const checkFriendship = async () => {
+        try {
+          const friends1 = await get(ref(db, `characters/${characterId}/friends/${currentUserCharacter.id}`));
+          const friends2 = await get(ref(db, `characters/${currentUserCharacter.id}/friends/${characterId}`));
+
+          if (friends1.exists() && friends2.exists()) {
+            setFriendshipStatus('friends');
+            return;
+          }
+
+          // ✅ CORREGIDO: Verificar en friendRequests (nueva ruta)
+          const sent = await get(ref(db, `friendRequests/${characterId}/${currentUserCharacter.id}`));
+          if (sent.exists() && sent.val()?.status === 'pending') {
+            setFriendshipStatus('pending_sent');
+            return;
+          }
+
+          // ✅ CORREGIDO: Verificar en friendRequests (nueva ruta)
+          const received = await get(ref(db, `friendRequests/${currentUserCharacter.id}/${characterId}`));
+          if (received.exists() && received.val()?.status === 'pending') {
+            setFriendshipStatus('pending_received');
+            return;
+          }
+
+          setFriendshipStatus('none');
+        } catch (error) {
+          console.error('Error checking friendship status:', error);
+          setFriendshipStatus('none');
+        }
+      };
+
+      checkFriendship();
+    }, [characterId, currentUserCharacter]);
 
   if (!character) {
     return <div className="flex items-center justify-center min-h-screen">Cargando personaje...</div>;
@@ -132,51 +134,64 @@ export default function PublicCharacterLayout({ children }: { children: React.Re
   const isMainProfile = pathname === `/characters/${characterId}`;
 
   // Función para manejar solicitudes de amistad
-  const handleFriendRequest = async () => {
-    if (!currentUserCharacter || !characterId) return;
+  
+  // Función para manejar solicitudes de amistad
+    const handleFriendRequest = async () => {
+      if (!currentUserCharacter || !characterId) return;
 
-    try {
-      if (currentUserCharacter.id === characterId) {
-        console.log('No puedes enviarte solicitud a ti mismo');
-        return;
+      try {
+        if (currentUserCharacter.id === characterId) {
+          console.log('No puedes enviarte solicitud a ti mismo');
+          return;
+        }
+
+        if (friendshipStatus === 'friends') {
+          // Eliminar amigo
+          await set(ref(db, `characters/${characterId}/friends/${currentUserCharacter.id}`), null);
+          await set(ref(db, `characters/${currentUserCharacter.id}/friends/${characterId}`), null);
+          setFriendshipStatus('none');
+        } else if (friendshipStatus === 'pending_received') {
+          // Aceptar solicitud
+          await set(ref(db, `characters/${characterId}/friends/${currentUserCharacter.id}`), true);
+          await set(ref(db, `characters/${currentUserCharacter.id}/friends/${characterId}`), true);
+          // ✅ CORREGIDO: Eliminar de friendRequests (nueva ruta)
+          await set(ref(db, `friendRequests/${currentUserCharacter.id}/${characterId}`), null);
+          setFriendshipStatus('friends');
+        } else if (friendshipStatus === 'pending_sent') {
+          // Cancelar solicitud
+          // ✅ CORREGIDO: Eliminar de friendRequests (nueva ruta)
+          await set(ref(db, `friendRequests/${characterId}/${currentUserCharacter.id}`), null);
+          setFriendshipStatus('none');
+        } else {
+          // ✅ CORREGIDO: Enviar solicitud con TODOS los datos necesarios
+          await set(ref(db, `friendRequests/${characterId}/${currentUserCharacter.id}`), {
+            fromCharacterId: currentUserCharacter.id,
+            toCharacterId: characterId,
+            fromCharacterName: currentUserCharacter.name,
+            fromCharacterUsername: currentUserCharacter.username,
+            fromCharacterAvatar: currentUserCharacter.avatarUrl,
+            status: 'pending',
+            timestamp: Date.now()
+          });
+          setFriendshipStatus('pending_sent');
+        }
+      } catch (error) {
+        console.error('Error managing friendship:', error);
       }
+    };
 
-      if (friendshipStatus === 'friends') {
-        // Eliminar amigo
-        await set(ref(db, `characters/${characterId}/friends/${currentUserCharacter.id}`), null);
-        await set(ref(db, `characters/${currentUserCharacter.id}/friends/${characterId}`), null);
+    // Función para rechazar solicitud
+    const handleRejectRequest = async () => {
+      if (!currentUserCharacter || !characterId) return;
+
+      try {
+        // ✅ CORREGIDO: Eliminar de friendRequests (nueva ruta)
+        await set(ref(db, `friendRequests/${currentUserCharacter.id}/${characterId}`), null);
         setFriendshipStatus('none');
-      } else if (friendshipStatus === 'pending_received') {
-        // Aceptar solicitud
-        await set(ref(db, `characters/${characterId}/friends/${currentUserCharacter.id}`), true);
-        await set(ref(db, `characters/${currentUserCharacter.id}/friends/${characterId}`), true);
-        await set(ref(db, `characters/${currentUserCharacter.id}/friendRequests/${characterId}`), null);
-        setFriendshipStatus('friends');
-      } else if (friendshipStatus === 'pending_sent') {
-        // Cancelar solicitud
-        await set(ref(db, `characters/${characterId}/friendRequests/${currentUserCharacter.id}`), null);
-        setFriendshipStatus('none');
-      } else {
-        // Enviar solicitud
-        await set(ref(db, `characters/${characterId}/friendRequests/${currentUserCharacter.id}`), true);
-        setFriendshipStatus('pending_sent');
+      } catch (error) {
+        console.error('Error rejecting request:', error);
       }
-    } catch (error) {
-      console.error('Error managing friendship:', error);
-    }
-  };
-
-  // Función para rechazar solicitud
-  const handleRejectRequest = async () => {
-    if (!currentUserCharacter || !characterId) return;
-
-    try {
-      await set(ref(db, `characters/${currentUserCharacter.id}/friendRequests/${characterId}`), null);
-    } catch (error) {
-      console.error('Error rejecting request:', error);
-    }
-  };
-
+    };
   // Función para abrir chat de mensajes
   const handleStartMessage = () => {
     if (!currentUserCharacter || !characterId) return;

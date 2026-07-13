@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { Textarea } from '../../../../components/ui/textarea';
@@ -10,20 +11,23 @@ import { Badge } from '../../../../components/ui/badge';
 import { MoreHorizontal, ThumbsUp, Frown, Laugh, Heart, Eye, Users } from 'lucide-react';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from '../../../../components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../components/ui/select';
 import { useCharacter } from './layout';
 import { sanitize } from '../../../../lib/sanitize';
-import { ref, push, set , onValue , remove } from 'firebase/database';
+import { ref, push, set, onValue, remove, get } from 'firebase/database';
 import { db } from '../../../../lib/firebase';
 
 export default function CharacterProfilePage() {
   const { character, isOwner } = useCharacter();
   const [posts, setPosts] = useState<any[]>([]);
+  const [feedPosts, setFeedPosts] = useState<any[]>([]);
   const [content, setContent] = useState('');
   const [editingPost, setEditingPost] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [postVisibility, setPostVisibility] = useState<'public' | 'friends'>('friends');
+  const [friends, setFriends] = useState<string[]>([]);
+  const [loadingFeed, setLoadingFeed] = useState(false);
 
+  // Cargar posts propios
   useEffect(() => {
     if (!character?.id) return;
 
@@ -32,17 +36,16 @@ export default function CharacterProfilePage() {
     const unsubscribe = onValue(postsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        // Convertir objeto en array y agregar el ID
         const postsArray = Object.entries(data)
           .map(([key, value]: [string, any]) => ({
             ...value,
-            id: key // asegura que el ID esté presente
+            id: key
           }))
-          .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()); // nuevos primero
+          .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
         
         setPosts(postsArray);
       } else {
-        setPosts([]); // si no hay posts
+        setPosts([]);
       }
     }, (error) => {
       console.error("Error al leer posts:", error);
@@ -51,13 +54,83 @@ export default function CharacterProfilePage() {
     return () => unsubscribe();
   }, [character?.id]);
 
+  // ✅ NUEVO: Cargar lista de amigos
+  useEffect(() => {
+    if (!character?.id) return;
+
+    const friendsRef = ref(db, `characters/${character.id}/friends`);
+    const unsubscribe = onValue(friendsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setFriends(Object.keys(data));
+      } else {
+        setFriends([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [character?.id]);
+
+  // ✅ NUEVO: Cargar feed de amigos cuando cambien los amigos
+  useEffect(() => {
+    if (!character?.id || friends.length === 0) {
+      setFeedPosts([]);
+      return;
+    }
+
+    const loadFeed = async () => {
+      setLoadingFeed(true);
+      try {
+        const allFeedPosts: any[] = [];
+
+        for (const friendId of friends) {
+          // Obtener datos del amigo
+          const friendSnap = await get(ref(db, `characters/${friendId}`));
+          if (!friendSnap.exists()) continue;
+          
+          const friendData = friendSnap.val();
+
+          // Obtener posts del amigo
+          const friendPostsRef = ref(db, `characters/${friendId}/posts`);
+          const friendPostsSnap = await get(friendPostsRef);
+          
+          if (friendPostsSnap.exists()) {
+            const friendPostsData = friendPostsSnap.val();
+            Object.entries(friendPostsData).forEach(([postId, postData]: [string, any]) => {
+              // Solo mostrar posts públicos o de amigos
+              if (postData.visibility === 'public' || postData.visibility === 'friends') {
+                allFeedPosts.push({
+                  ...postData,
+                  id: postId,
+                  charName: friendData.name,
+                  charHandle: friendData.username,
+                  avatarUrl: friendData.avatarUrl,
+                  friendId: friendId
+                });
+              }
+            });
+          }
+        }
+
+        // Ordenar por fecha (más recientes primero)
+        allFeedPosts.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+        setFeedPosts(allFeedPosts);
+      } catch (error) {
+        console.error('Error cargando feed:', error);
+      } finally {
+        setLoadingFeed(false);
+      }
+    };
+
+    loadFeed();
+  }, [character?.id, friends]);
+
   // Publicar post
   const handlePost = async () => {
     if (!content.trim() || !character) return;
     const cleanContent = sanitize(content);
     
     try {
-      // Guardar en Firebase
       const postsRef = ref(db, `characters/${character.id}/posts`);
       const newPostRef = push(postsRef);
       
@@ -78,8 +151,6 @@ export default function CharacterProfilePage() {
       };
 
       await set(newPostRef, newPost);
-
-      // Actualizar estado local
       setPosts([newPost, ...posts]);
       setContent('');
     } catch (error) {
@@ -119,13 +190,11 @@ export default function CharacterProfilePage() {
     }
   };
 
-  // Función para cambiar visibilidad de un post
   const handleChangePostVisibility = async (postId: string, newVisibility: 'public' | 'friends') => {
     try {
       const postRef = ref(db, `characters/${character.id}/posts/${postId}/visibility`);
       await set(postRef, newVisibility);
       
-      // Actualizar estado local
       setPosts(posts.map(p => 
         p.id === postId 
           ? { ...p, visibility: newVisibility }
@@ -136,7 +205,6 @@ export default function CharacterProfilePage() {
     }
   };
 
-  // Función para manejar reacciones
   const handleReaction = async (postId: string, reactionType: 'likes' | 'hearts' | 'heartbreaks' | 'laughs') => {
     try {
       const postRef = ref(db, `characters/${character.id}/posts/${postId}/${reactionType}`);
@@ -146,7 +214,6 @@ export default function CharacterProfilePage() {
       const newCount = (currentPost[reactionType] || 0) + 1;
       await set(postRef, newCount);
 
-      // Actualizar estado local
       setPosts(posts.map(p => 
         p.id === postId 
           ? { ...p, [reactionType]: newCount }
@@ -188,18 +255,22 @@ export default function CharacterProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Enlaces sociales */}
+          {/* Enlaces */}
           <Card>
             <CardHeader>
               <CardTitle>Enlaces</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {character.socialLinks?.length > 0 ? (
-                character.socialLinks.map((link: any, i: number) => (
-                  <div key={i}>
-                    <p className="text-sm text-muted-foreground">{link.name}</p>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline block text-sm">
-                      {link.username || link.url}
+              {character.enlaces?.length > 0 ? (
+                character.enlaces.map((enlace: string, i: number) => (
+                  <div key={i} className="p-2 border rounded">
+                    <a 
+                      href={enlace} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline block text-sm"
+                    >
+                      {enlace}
                     </a>
                   </div>
                 ))
@@ -217,6 +288,79 @@ export default function CharacterProfilePage() {
               <TabsTrigger value="feed">Feed</TabsTrigger>
               <TabsTrigger value="public-wall">Mi Muro</TabsTrigger>
             </TabsList>
+
+            {/* ✅ NUEVO: Feed de Amigos */}
+            <TabsContent value="feed">
+              {loadingFeed ? (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <p className="text-muted-foreground">Cargando feed...</p>
+                  </CardContent>
+                </Card>
+              ) : friends.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground mb-2">No tienes amigos aún</p>
+                    <p className="text-sm text-muted-foreground">
+                      Agrega amigos para ver sus publicaciones en tu feed.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : feedPosts.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <p className="text-muted-foreground">No hay publicaciones de tus amigos.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-6">
+                  {feedPosts.map((post) => (
+                    <Card key={`${post.friendId}-${post.id}`}>
+                      <CardHeader>
+                        <div className="flex gap-4">
+                          <Link href={`/characters/${post.friendId}`}>
+                            <Avatar className="cursor-pointer hover:opacity-80 transition">
+                              <AvatarImage src={post.avatarUrl} />
+                              <AvatarFallback>{post.charName.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                          </Link>
+                          <div className="flex-1">
+                            <div className="flex items-baseline gap-2">
+                              <Link href={`/characters/${post.friendId}`} className="font-bold hover:underline">
+                                {post.charName}
+                              </Link>
+                              <p className="text-sm text-muted-foreground">@{post.charHandle}</p>
+                              <p className="text-sm text-muted-foreground">&middot;</p>
+                              <p className="text-sm text-muted-foreground">{new Date(post.time).toLocaleString()}</p>
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                {post.visibility === 'public' ? <Eye className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+                                <span>{post.visibility === 'public' ? 'Público' : 'Amigos'}</span>
+                              </div>
+                            </div>
+                            <p className="mt-2 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: post.content }} />
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <div className="px-6 pb-6 flex justify-around text-muted-foreground border-t pt-2 mt-4">
+                        <div className="flex items-center gap-2">
+                          <ThumbsUp className="h-4 w-4" /> {post.likes || 0}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Heart className="h-4 w-4" /> {post.hearts || 0}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Frown className="h-4 w-4" /> {post.heartbreaks || 0}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Laugh className="h-4 w-4" /> {post.laughs || 0}
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
 
             {/* Muro Público */}
             <TabsContent value="public-wall">
@@ -248,7 +392,6 @@ export default function CharacterProfilePage() {
                         />
                       </div>
                     </div>
-                    {/* Menú de tres puntos */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm">
@@ -370,18 +513,6 @@ export default function CharacterProfilePage() {
                   </Card>
                 ))
               )}
-            </TabsContent>
-
-            {/* Feed de Amigos */}
-            <TabsContent value="feed">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Feed de Amigos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Aquí verás las publicaciones de tus amigos.</p>
-                </CardContent>
-              </Card>
             </TabsContent>
           </Tabs>
         </div>

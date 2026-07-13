@@ -103,69 +103,42 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
     return () => unsubscribe();
   }, [characterId]);
 
-  // Contar mensajes no leídos
-  useEffect(() => {
-    if (!characterId) return;
-    const messagesRef = ref(db, `messages/${characterId}`);
-    const unsubscribe = onValue(messagesRef, (snapshot) => {
-      const data = snapshot.val();
-      let unreadCount = 0;
-      
-      if (data) {
-        Object.values(data).forEach((conversation: any) => {
-          if (conversation.messages) {
-            Object.values(conversation.messages).forEach((message: any) => {
-              if (message.to === characterId && !message.read) {
-                unreadCount++;
-              }
-            });
-          }
-        });
-      }
-      
-      setNewMessagesCount(unreadCount);
-    });
-    return () => unsubscribe();
-  }, [characterId]);
-
   // Contar solicitudes de amistad
-  useEffect(() => {
-    if (!characterId) return;
-    const requestsRef = ref(db, `friendRequests/${characterId}`);
-    const unsubscribe = onValue(requestsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const requests = Object.entries(data)
-          .filter(([key, req]: [string, any]) => req.status === 'pending')
-          .map(([key, req]: [string, any]) => ({
-            id: key,
-            senderName: req.senderName,
-            senderUsername: req.senderUsername,
-            senderAvatar: req.senderAvatar,
-            time: req.sentAt,
-          }));
-        setFriendRequestsCount(requests.length);
-        setNotifications(requests);
-      } else {
-        setNotifications([]);
-        setFriendRequestsCount(0);
-      }
-    });
-    return () => unsubscribe();
-  }, [characterId]);
 
+    useEffect(() => {
+      if (!characterId) return;
+      const requestsRef = ref(db, `friendRequests/${characterId}`);
+      const unsubscribe = onValue(requestsRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          const requests = Object.entries(data)
+            .filter(([key, req]: [string, any]) => req.status === 'pending')
+            .map(([key, req]: [string, any]) => ({
+              id: key,
+              senderName: req.fromCharacterName, // ✅ CORREGIDO
+              senderUsername: req.fromCharacterUsername, // ✅ CORREGIDO
+              senderAvatar: req.fromCharacterAvatar, // ✅ CORREGIDO
+              time: req.timestamp, // ✅ CORREGIDO
+            }));
+          setFriendRequestsCount(requests.length);
+          setNotifications(requests);
+        } else {
+          setNotifications([]);
+          setFriendRequestsCount(0);
+        }
+      });
+      return () => unsubscribe();
+    }, [characterId]);
+
+    
   // Función para aceptar solicitud de amistad
   const acceptFriendRequest = async (senderId: string) => {
     if (!characterId) return;
     
     try {
-      // Agregar como amigo en ambos personajes
       await set(ref(db, `characters/${characterId}/friends/${senderId}`), true);
       await set(ref(db, `characters/${senderId}/friends/${characterId}`), true);
-      
-      // Eliminar la solicitud
       await remove(ref(db, `friendRequests/${characterId}/${senderId}`));
-      
       console.log('Solicitud de amistad aceptada');
     } catch (error) {
       console.error('Error al aceptar solicitud:', error);
@@ -177,24 +150,30 @@ export default function CharacterLayout({ children }: { children: React.ReactNod
     if (!characterId) return;
     
     try {
-      // Solo eliminar la solicitud
       await remove(ref(db, `friendRequests/${characterId}/${senderId}`));
-      
       console.log('Solicitud de amistad rechazada');
     } catch (error) {
       console.error('Error al rechazar solicitud:', error);
     }
   };
 
+  // ✅ FUNCIÓN AGREGADA: Actualizar datos del personaje localmente
+  const updateCharacterData = (updates: any) => {
+    setCharacter((prev) => {
+      if (!prev) return prev;
+      return { ...prev, ...updates };
+    });
+  };
+
   if (!character) {
     return <div className="flex items-center justify-center min-h-screen">Cargando personaje...</div>;
   }
 
-  // Determinar si mostrar notificaciones (solo en vista principal)
   const showNotifications = pathname === `/dashboard/characters/${characterId}`;
 
   return (
-    <CharacterContext.Provider value={{ character, isOwner, allCharacters, newMessagesCount }}>
+    // ✅ CAMBIADO: Agregado updateCharacterData al Provider
+    <CharacterContext.Provider value={{ character, isOwner, allCharacters, newMessagesCount, updateCharacterData }}>
       <div className="min-h-screen bg-secondary">
         {/* Header */}
         <header className="bg-background/80 backdrop-blur-sm sticky top-0 z-20 border-b">

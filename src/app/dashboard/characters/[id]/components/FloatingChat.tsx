@@ -9,7 +9,7 @@ import { ScrollArea } from '../../../../../components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../../../../../components/ui/avatar';
 import { Badge } from '../../../../../components/ui/badge';
 import { Send, MessageSquare, X, Minus } from 'lucide-react';
-import { ref, onValue, push, serverTimestamp, get, off } from 'firebase/database';
+import { ref, onValue, push, update, set, serverTimestamp, get, off } from 'firebase/database';
 import { db } from '../../../../../lib/firebase';
 import { useCharacter } from '../layout';
 import { Character } from '../../../../../lib/types';
@@ -52,12 +52,10 @@ export default function FloatingChat() {
     const handleOpenChat = (event: any) => {
       const { targetCharacterId } = event.detail;
       if (targetCharacterId) {
-        // Busca el chat existente o crea uno nuevo
         const existingChat = chats.find(chat => chat.participants.includes(targetCharacterId));
         if (existingChat) {
           setSelectedChat(existingChat);
         } else {
-          // Si no existe, podrías iniciar uno nuevo
           console.log('Iniciar chat con:', targetCharacterId);
         }
         setIsOpen(true);
@@ -121,6 +119,22 @@ export default function FloatingChat() {
     return () => unsubscribe();
   }, [selectedChat]);
 
+  // ✅ NUEVO: Marcar mensajes como leídos al abrir un chat
+  useEffect(() => {
+    if (!selectedChat || !character?.id) return;
+
+    const markAsRead = async () => {
+      try {
+        const unreadRef = ref(db, `chats/${selectedChat.id}/unreadCount/${character.id}`);
+        await set(unreadRef, 0);
+      } catch (error) {
+        console.error('Error marking messages as read:', error);
+      }
+    };
+
+    markAsRead();
+  }, [selectedChat, character]);
+
   // Auto scroll al final
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -132,20 +146,21 @@ export default function FloatingChat() {
     const messagesRef = ref(db, `chatMessages/${selectedChat.id}`);
     const chatRef = ref(db, `chats/${selectedChat.id}`);
 
+    // ✅ CORREGIDO: Usar Date.now() en lugar de serverTimestamp()
     const messageData = {
       senderId: character.id,
       content: newMessage.trim(),
-      timestamp: serverTimestamp(),
+      timestamp: Date.now(),
       read: false,
     };
 
     try {
       await push(messagesRef, messageData);
 
-      // Actualizar info del chat
+      // ✅ CORREGIDO: Usar update() en lugar de push()
       const otherParticipantId = selectedChat.participants.find((p) => p !== character.id);
       if (otherParticipantId) {
-        await push(chatRef, {
+        await update(chatRef, {
           lastMessage: newMessage.trim(),
           lastMessageTime: Date.now(),
           [`unreadCount/${otherParticipantId}`]: (selectedChat.unreadCount?.[otherParticipantId] || 0) + 1,
@@ -179,26 +194,29 @@ export default function FloatingChat() {
 
   return (
     <>
-      {/* Botón flotante */}
-      {!isOpen && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <Button
-            onClick={() => setIsOpen(true)}
-            className="h-14 w-14 rounded-full shadow-lg relative"
-            size="lg"
-          >
-            <MessageSquare className="h-6 w-6" />
-            {unreadTotal > 0 && (
-              <Badge
-                variant="destructive"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs"
-              >
-                {unreadTotal > 99 ? '99+' : unreadTotal}
-              </Badge>
-            )}
-          </Button>
-        </div>
-      )}
+
+
+    {/* Botón flotante */}
+    {!isOpen && (
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          onClick={() => setIsOpen(true)}
+          className="h-14 w-14 rounded-full shadow-lg relative flex items-center justify-center bg-primary hover:bg-primary/90"
+          size="lg"
+          aria-label="Abrir chat"
+        >
+          {/* ✅ Ícono explícito */}
+          <MessageSquare className="h-6 w-6 text-primary-foreground" />
+          
+          {/* ✅ Badge de notificaciones */}
+          {unreadTotal > 0 && (
+            <span className="absolute -top-2 -right-2 h-6 w-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-background">
+              {unreadTotal > 99 ? '99+' : unreadTotal}
+            </span>
+          )}
+        </Button>
+      </div>
+    )}
 
       {/* Ventana de chat */}
       {isOpen && (
@@ -303,7 +321,7 @@ export default function FloatingChat() {
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           placeholder="Escribe un mensaje..."
-                          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                          onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                           className="text-sm"
                         />
                         <Button size="sm" onClick={sendMessage}>

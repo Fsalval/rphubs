@@ -3,14 +3,15 @@
 export const runtime = 'edge';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../../components/ui/card';
 import { Input } from '../../../../../components/ui/input';
 import { Button } from '../../../../../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../../../../../components/ui/avatar';
 import { Badge } from '../../../../../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../../components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../../components/ui/select';
-import { Search, UserPlus, Users, Clock, Check, X } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../../../components/ui/dropdown-menu';
+import { Search, UserPlus, Users, Check, X, ChevronDown } from 'lucide-react';
 import { ref, onValue, set, remove, get } from 'firebase/database';
 import { db } from '../../../../../lib/firebase';
 import { useCharacter } from '../layout';
@@ -24,8 +25,6 @@ interface Amigo {
   age?: number;
   mbti?: string;
   nationality?: string;
-  lastActivity?: string;
-  isOnline?: boolean;
   friendSince?: string;
 }
 
@@ -45,7 +44,6 @@ export default function AmigosPage() {
   const { character } = useCharacter();
   const [amigos, setAmigos] = useState<Amigo[]>([]);
   const [solicitudesPendientes, setSolicitudesPendientes] = useState<SolicitudAmistad[]>([]);
-  const [solicitudesEnviadas, setSolicitudesEnviadas] = useState<SolicitudAmistad[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroGenero, setFiltroGenero] = useState('todos');
@@ -92,7 +90,6 @@ export default function AmigosPage() {
     return () => unsubscribe();
   }, [character?.id]);
 
-  // Cargar solicitudes pendientes (recibidas)
   useEffect(() => {
     if (!character?.id) return;
 
@@ -115,7 +112,38 @@ export default function AmigosPage() {
     return () => unsubscribe();
   }, [character?.id]);
 
-  // Filtrar amigos
+  const handleAcceptRequest = async (solicitud: SolicitudAmistad) => {
+    if (!character?.id) return;
+
+    try {
+      await set(ref(db, `characters/${character.id}/friends/${solicitud.fromCharacterId}`), {
+        since: new Date().toISOString()
+      });
+      await set(ref(db, `characters/${solicitud.fromCharacterId}/friends/${character.id}`), {
+        since: new Date().toISOString()
+      });
+      
+      await remove(ref(db, `friendRequests/${character.id}/${solicitud.fromCharacterId}`));
+      
+      alert('Solicitud aceptada');
+    } catch (error) {
+      console.error('Error al aceptar solicitud:', error);
+      alert('No se pudo aceptar la solicitud');
+    }
+  };
+
+  const handleRejectRequest = async (solicitud: SolicitudAmistad) => {
+    if (!character?.id) return;
+
+    try {
+      await remove(ref(db, `friendRequests/${character.id}/${solicitud.fromCharacterId}`));
+      alert('Solicitud rechazada');
+    } catch (error) {
+      console.error('Error al rechazar solicitud:', error);
+      alert('No se pudo rechazar la solicitud');
+    }
+  };
+
   const amigosFiltrados = amigos.filter(amigo => {
     const matchesSearch = amigo.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          amigo.username?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -130,7 +158,6 @@ export default function AmigosPage() {
     return matchesSearch && matchesGender && matchesAge && matchesMBTI;
   });
 
-  // Ordenar amigos
   const amigosOrdenados = [...amigosFiltrados].sort((a, b) => {
     switch (ordenar) {
       case 'nombre':
@@ -177,7 +204,6 @@ export default function AmigosPage() {
 
           <TabsContent value="amigos">
             <div className="space-y-4">
-              {/* Filtros */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -197,53 +223,69 @@ export default function AmigosPage() {
                   </div>
                   
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Select value={filtroGenero} onValueChange={setFiltroGenero}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Género" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Todos</SelectItem>
-                        <SelectItem value="masculino">Masculino</SelectItem>
-                        <SelectItem value="femenino">Femenino</SelectItem>
-                        <SelectItem value="no-binario">No binario</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {/* Género */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          {filtroGenero === 'todos' ? 'Género' : filtroGenero}
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-[180px]">
+                        <DropdownMenuItem onClick={() => setFiltroGenero('todos')}>Todos</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setFiltroGenero('masculino')}>Masculino</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setFiltroGenero('femenino')}>Femenino</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setFiltroGenero('no-binario')}>No binario</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                    <Select value={filtroEdad} onValueChange={setFiltroEdad}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Edad" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Todas</SelectItem>
-                        <SelectItem value="menor18">Menor 18</SelectItem>
-                        <SelectItem value="18-25">18-25</SelectItem>
-                        <SelectItem value="26-35">26-35</SelectItem>
-                        <SelectItem value="mayor35">Mayor 35</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {/* Edad */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          {filtroEdad === 'todos' ? 'Edad' : filtroEdad === 'menor18' ? 'Menor 18' : filtroEdad === '18-25' ? '18-25' : filtroEdad === '26-35' ? '26-35' : 'Mayor 35'}
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-[180px]">
+                        <DropdownMenuItem onClick={() => setFiltroEdad('todos')}>Todas</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setFiltroEdad('menor18')}>Menor 18</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setFiltroEdad('18-25')}>18-25</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setFiltroEdad('26-35')}>26-35</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setFiltroEdad('mayor35')}>Mayor 35</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                    <Select value={filtroMBTI} onValueChange={setFiltroMBTI}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="MBTI" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Todos</SelectItem>
+                    {/* MBTI */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          {filtroMBTI === 'todos' ? 'MBTI' : filtroMBTI}
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-[180px]">
+                        <DropdownMenuItem onClick={() => setFiltroMBTI('todos')}>Todos</DropdownMenuItem>
                         {[...new Set(amigos.map(a => a.mbti).filter(Boolean))].map(mbti => (
-                          <SelectItem key={mbti} value={mbti!}>{mbti}</SelectItem>
+                          <DropdownMenuItem key={mbti} onClick={() => setFiltroMBTI(mbti!)}>{mbti}</DropdownMenuItem>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                    <Select value={ordenar} onValueChange={setOrdenar}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Ordenar por" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="nombre">Nombre</SelectItem>
-                        <SelectItem value="edad">Edad</SelectItem>
-                        <SelectItem value="reciente">Más reciente</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {/* Ordenar */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          {ordenar === 'nombre' ? 'Nombre' : ordenar === 'edad' ? 'Edad' : 'Más reciente'}
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-[180px]">
+                        <DropdownMenuItem onClick={() => setOrdenar('nombre')}>Nombre</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setOrdenar('edad')}>Edad</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setOrdenar('reciente')}>Más reciente</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </CardContent>
               </Card>
@@ -255,16 +297,12 @@ export default function AmigosPage() {
                     <h3 className="text-lg font-medium mb-2">
                       {amigos.length === 0 ? 'No tienes amigos aún' : 'No se encontraron amigos'}
                     </h3>
-                    <p className="text-gray-500 mb-4">
+                    <p className="text-gray-500">
                       {amigos.length === 0 
                         ? 'Comienza a conectar con otros personajes para expandir tu red de amigos.'
                         : 'Intenta ajustar los filtros para encontrar a tus amigos.'
                       }
                     </p>
-                    <Button>
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Buscar amigos
-                    </Button>
                   </CardContent>
                 </Card>
               ) : (
@@ -300,12 +338,16 @@ export default function AmigosPage() {
                             </div>
 
                             <div className="flex gap-2 mt-3">
-                              <Button size="sm" variant="outline">
-                                Ver Perfil
-                              </Button>
-                              <Button size="sm" variant="outline">
-                                Mensaje
-                              </Button>
+                              <Link href={`/characters/${amigo.id}`}>
+                                <Button size="sm" variant="outline">
+                                  Ver Perfil
+                                </Button>
+                              </Link>
+                              <Link href={`/dashboard/characters/${character?.id}/messages?chat=${amigo.id}`}>
+                                <Button size="sm" variant="outline">
+                                  Mensaje
+                                </Button>
+                              </Link>
                             </div>
 
                             <p className="text-xs text-gray-400 mt-2">
@@ -352,11 +394,11 @@ export default function AmigosPage() {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <Button size="sm">
+                            <Button size="sm" onClick={() => handleAcceptRequest(solicitud)}>
                               <Check className="w-4 h-4 mr-1" />
                               Aceptar
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => handleRejectRequest(solicitud)}>
                               <X className="w-4 h-4 mr-1" />
                               Rechazar
                             </Button>

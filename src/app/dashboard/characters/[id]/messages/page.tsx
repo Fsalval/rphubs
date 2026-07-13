@@ -1,8 +1,8 @@
 // src/app/dashboard/characters/[id]/messages/page.tsx
 'use client';
 
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '../../../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../../components/ui/card';
@@ -10,8 +10,9 @@ import { Input } from '../../../../../components/ui/input';
 import { ScrollArea } from '../../../../../components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../../../../../components/ui/avatar';
 import { Badge } from '../../../../../components/ui/badge';
-import { Send, UserPlus, Phone, Video, MoreVertical, MessageSquare } from 'lucide-react';
-import { ref, onValue, push, serverTimestamp, get, off } from 'firebase/database';
+import { Send, MoreVertical, MessageSquare, Trash2 } from 'lucide-react';
+import { ref, onValue, push, update, set, serverTimestamp, get, off, remove } from 'firebase/database';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../../../components/ui/dropdown-menu';
 import { db } from '../../../../../lib/firebase';
 import { useCharacter } from '../layout';
 
@@ -37,7 +38,7 @@ interface Chat {
 export default function MessagesPage() {
   const { character, allCharacters } = useCharacter();
   const searchParams = useSearchParams();
-  const chatParam = searchParams.get('chat'); // Para acceso directo a chat específico
+  const chatParam = searchParams.get('chat');
   
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
@@ -45,30 +46,30 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  const creatingChatRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!character) return;
     loadChats();
     
     return () => {
-      // Cleanup listeners
       off(ref(db, `chats`));
     };
   }, [character]);
 
   useEffect(() => {
-    // Si hay un parámetro chat, buscar y seleccionar ese chat automáticamente
-    if (chatParam && chats.length > 0) {
+    if (chatParam && chats.length > 0 && character) {
       const targetChat = chats.find(chat => 
         chat.participants.includes(chatParam) && 
         chat.participants.includes(character.id)
       );
+      
       if (targetChat) {
         setSelectedChat(targetChat);
       } else {
-        // Si no existe el chat, crear uno nuevo con ese personaje
         const targetCharacter = allCharacters.find((char: any) => char.id === chatParam);
-        if (targetCharacter) {
+        if (targetCharacter && !creatingChatRef.current.has(targetCharacter.id)) {
           handleStartChat(targetCharacter);
         }
       }
@@ -82,7 +83,7 @@ export default function MessagesPage() {
     }
   }, [selectedChat]);
 
-  const loadChats = async () => {
+  const loadChats = () => {
     if (!character) return;
 
     const chatsRef = ref(db, 'chats');
@@ -100,6 +101,8 @@ export default function MessagesPage() {
           .sort((a: any, b: any) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
         
         setChats(userChats);
+      } else {
+        setChats([]);
       }
       setLoading(false);
     });
@@ -129,7 +132,7 @@ export default function MessagesPage() {
     
     try {
       const chatRef = ref(db, `chats/${chatId}/unreadCount/${character.id}`);
-      await push(chatRef, 0);
+      await set(chatRef, 0);
     } catch (error) {
       console.error('Error marking as read:', error);
     }
@@ -138,18 +141,23 @@ export default function MessagesPage() {
   const handleStartChat = async (otherChar: any) => {
     if (!character) return;
 
-    // Verificar si ya existe un chat entre estos personajes
-    const existingChat = chats.find(chat => 
-      chat.participants.includes(otherChar.id) && 
-      chat.participants.includes(character.id)
-    );
+    if (creatingChatRef.current.has(otherChar.id)) {
+      return;
+    }
+
+    const existingChat = chats.find(chat => {
+      const hasOther = chat.participants.includes(otherChar.id);
+      const hasCurrent = chat.participants.includes(character.id);
+      return hasOther && hasCurrent && chat.participants.length === 2;
+    });
 
     if (existingChat) {
       setSelectedChat(existingChat);
       return;
     }
 
-    // Crear nuevo chat
+    creatingChatRef.current.add(otherChar.id);
+
     try {
       const newChatData = {
         participants: [character.id, otherChar.id],
@@ -177,17 +185,41 @@ export default function MessagesPage() {
       const chatsRef = ref(db, 'chats');
       const newChatRef = await push(chatsRef, newChatData);
       
-      // Actualizar estado local
-      const newChat = {
+      const newChat: Chat = {
         id: newChatRef.key!,
         ...newChatData,
         lastMessageTime: Date.now()
       };
       
-      setChats([newChat, ...chats]);
       setSelectedChat(newChat);
     } catch (error) {
       console.error('Error creating chat:', error);
+    } finally {
+      setTimeout(() => {
+        creatingChatRef.current.delete(otherChar.id);
+      }, 3000);
+    }
+  };
+
+  // ✅ NUEVA FUNCIÓN: Eliminar chat definitivamente
+  const handleDeleteChat = async () => {
+    if (!selectedChat) return;
+    
+    if (!confirm('¿Estás seguro de que quieres eliminar este chat? Esta acción no se puede deshacer y se borrarán todos los mensajes.')) {
+      return;
+    }
+
+    try {
+      // Borrar el nodo del chat y los mensajes de Firebase
+      await remove(ref(db, `chats/${selectedChat.id}`));
+      await remove(ref(db, `chatMessages/${selectedChat.id}`));
+      
+      // Actualizar estado local
+      setChats(prev => prev.filter(c => c.id !== selectedChat.id));
+      setSelectedChat(null);
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      alert('No se pudo eliminar el chat.');
     }
   };
 
@@ -198,22 +230,20 @@ export default function MessagesPage() {
       const messageData = {
         senderId: character.id,
         content: newMessage.trim(),
-        timestamp: serverTimestamp(),
+        timestamp: Date.now(),
         read: false
       };
 
-      // Agregar mensaje
       const messagesRef = ref(db, `chatMessages/${selectedChat.id}`);
       await push(messagesRef, messageData);
 
-      // Actualizar información del chat
       const otherParticipantId = selectedChat.participants.find(id => id !== character.id);
       if (otherParticipantId) {
         const chatRef = ref(db, `chats/${selectedChat.id}`);
-        await push(chatRef, {
+        await update(chatRef, {
           lastMessage: newMessage.trim(),
           lastMessageTime: Date.now(),
-          [`unreadCount/${otherParticipantId}`]: (selectedChat.unreadCount[otherParticipantId] || 0) + 1
+          [`unreadCount/${otherParticipantId}`]: (selectedChat.unreadCount?.[otherParticipantId] || 0) + 1
         });
       }
 
@@ -227,15 +257,15 @@ export default function MessagesPage() {
     const otherId = chat.participants.find(id => id !== character?.id);
     return {
       id: otherId,
-      name: chat.participantNames[otherId!],
-      username: chat.participantUsernames[otherId!],
-      avatarUrl: chat.participantAvatars[otherId!]
+      name: chat.participantNames?.[otherId!] || 'Usuario',
+      username: chat.participantUsernames?.[otherId!] || '',
+      avatarUrl: chat.participantAvatars?.[otherId!] || ''
     };
   };
 
   const filteredChars = allCharacters.filter(
     (char: any) =>
-      char.id !== character?.id && // No incluir el personaje actual
+      char.id !== character?.id &&
       (char.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
        char.username?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -283,40 +313,44 @@ export default function MessagesPage() {
           </div>
           <div className="p-2">
             <p className="text-xs text-muted-foreground px-2 mb-2">Chats</p>
-            {chats.map((chat) => {
-              const other = getOtherParticipant(chat);
-              const unreadCount = chat.unreadCount?.[character?.id || ''] || 0;
-              
-              return (
-                <div
-                  key={chat.id}
-                  className={`flex items-center gap-3 p-2 rounded cursor-pointer ${
-                    selectedChat?.id === chat.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
-                  }`}
-                  onClick={() => setSelectedChat(chat)}
-                >
-                  <Avatar className="w-10 h-10">
-                    <AvatarImage src={other.avatarUrl} />
-                    <AvatarFallback className="text-sm font-bold">
-                      {other.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium truncate">{other.name}</p>
-                      {unreadCount > 0 && (
-                        <Badge variant="destructive" className="text-xs">
-                          {unreadCount}
-                        </Badge>
-                      )}
+            {chats.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No tienes chats activos</p>
+            ) : (
+              chats.map((chat) => {
+                const other = getOtherParticipant(chat);
+                const unreadCount = chat.unreadCount?.[character?.id || ''] || 0;
+                
+                return (
+                  <div
+                    key={chat.id}
+                    className={`flex items-center gap-3 p-2 rounded cursor-pointer ${
+                      selectedChat?.id === chat.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                    }`}
+                    onClick={() => setSelectedChat(chat)}
+                  >
+                    <Avatar className="w-10 h-10">
+                      <AvatarImage src={other.avatarUrl} />
+                      <AvatarFallback className="text-sm font-bold">
+                        {other.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium truncate">{other.name}</p>
+                        {unreadCount > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            {unreadCount}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {chat.lastMessage || 'Iniciar conversación'}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {chat.lastMessage || 'Iniciar conversación'}
-                    </p>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </ScrollArea>
       </div>
@@ -327,60 +361,78 @@ export default function MessagesPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
+                  {/* ✅ CAMBIADO: Avatar y nombre ahora son links al perfil */}
                   <div className="flex items-center gap-3">
-                    <Avatar className="w-10 h-10">
-                      <AvatarImage src={getOtherParticipant(selectedChat).avatarUrl} />
-                      <AvatarFallback className="text-sm font-bold">
-                        {getOtherParticipant(selectedChat).name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <Link href={`/characters/${getOtherParticipant(selectedChat).id}`}>
+                      <Avatar className="w-10 h-10 cursor-pointer hover:opacity-80 transition">
+                        <AvatarImage src={getOtherParticipant(selectedChat).avatarUrl} />
+                        <AvatarFallback className="text-sm font-bold">
+                          {getOtherParticipant(selectedChat).name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
                     <div>
-                      <p className="font-medium">{getOtherParticipant(selectedChat).name}</p>
+                      <Link href={`/characters/${getOtherParticipant(selectedChat).id}`} className="font-medium hover:underline block">
+                        {getOtherParticipant(selectedChat).name}
+                      </Link>
                       <p className="text-sm text-muted-foreground">@{getOtherParticipant(selectedChat).username}</p>
                     </div>
                   </div>
+                  
+                  {/* ✅ CAMBIADO: Menú de opciones con Eliminar Chat */}
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm">
-                      <Phone className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <Video className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
+                          onClick={handleDeleteChat}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Eliminar chat
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col">
                 <ScrollArea className="flex-1 mb-4 h-80">
                   <div className="space-y-4 p-2">
-                    {messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`flex ${msg.senderId === character?.id ? 'justify-end' : 'justify-start'}`}
-                      >
+                    {messages.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">No hay mensajes aún. ¡Inicia la conversación!</p>
+                    ) : (
+                      messages.map((msg) => (
                         <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                            msg.senderId === character?.id 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'bg-muted'
-                          }`}
+                          key={msg.id}
+                          className={`flex ${msg.senderId === character?.id ? 'justify-end' : 'justify-start'}`}
                         >
-                          <p className="text-sm">{msg.content}</p>
-                          <p className={`text-xs mt-1 ${
-                            msg.senderId === character?.id 
-                              ? 'text-primary-foreground/70' 
-                              : 'text-muted-foreground'
-                          }`}>
-                            {new Date(msg.timestamp).toLocaleTimeString([], { 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })}
-                          </p>
+                          <div
+                            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                              msg.senderId === character?.id 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'bg-muted'
+                            }`}
+                          >
+                            <p className="text-sm">{msg.content}</p>
+                            <p className={`text-xs mt-1 ${
+                              msg.senderId === character?.id 
+                                ? 'text-primary-foreground/70' 
+                                : 'text-muted-foreground'
+                            }`}>
+                              {new Date(msg.timestamp).toLocaleTimeString([], { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </ScrollArea>
                 <div className="flex gap-2">
@@ -388,7 +440,7 @@ export default function MessagesPage() {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Escribe un mensaje..."
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                     className="flex-1"
                   />
                   <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
