@@ -22,8 +22,27 @@ import { useTheme } from '../../../../lib/theme-context';
 import { Character } from '../../../../lib/types';
 import { User } from 'firebase/auth';
 import FloatingChat from './components/FloatingChat';
+
+// ✅ Importamos el Provider desde el contexto
 import { CharacterProvider } from '../../../../context/CharacterContext';
 
+// ✅ Definimos interfaces locales para notificaciones y mensajes
+interface NotificationType {
+  id: string;
+  senderName: string;
+  senderUsername: string;
+  senderAvatar: string;
+  time: number;
+}
+
+interface MessagePreviewType {
+  id: string;
+  name: string;
+  username: string;
+  avatarUrl: string;
+  content: string;
+  time: number;
+}
 
 export default function CharacterLayout({
   children,
@@ -40,11 +59,13 @@ export default function CharacterLayout({
   const [isOwner, setIsOwner] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [allCharacters, setAllCharacters] = useState<Array<Record<string, unknown>>>([]);
+  
+  // ✅ Usamos los tipos correctos (ya no es Record<string, unknown>)
+  const [allCharacters, setAllCharacters] = useState<Character[]>([]);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const [friendRequestsCount, setFriendRequestsCount] = useState(0);
-  const [notifications, setNotifications] = useState<Array<Record<string, unknown>>>([]);
-  const [messagesPreview, setMessagesPreview] = useState<Array<Record<string, unknown>>>([]);
+  const [notifications, setNotifications] = useState<NotificationType[]>([]);
+  const [messagesPreview, setMessagesPreview] = useState<MessagePreviewType[]>([]);
 
 
   // Detectar usuario
