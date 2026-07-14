@@ -13,7 +13,7 @@ import { Badge } from '../../../../../components/ui/badge';
 import { Plus, Users, MessageSquare, MoreHorizontal, Edit3, CheckCircle, BookOpen, Upload, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../../../../components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../../components/ui/select';
-import { useCharacter } from '../layout';
+import { useCharacter } from '@/app/dashboard/characters/[id]/useCharacter'
 import { ref, push, onValue, update } from 'firebase/database';
 import { db, storage } from '../../../../../lib/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -73,10 +73,11 @@ export default function TramasPage() {
   let visibleTramas = tramas;
   if (activeTab === 'public') {
     visibleTramas = tramas.filter(t => t.visibility === 'public');
-  } else if (activeTab === 'friends') {
-    visibleTramas = tramas.filter(t => t.visibility === 'friends' && (
-      t.collaborators?.includes(character.id) || character.friends?.some((f: any) => t.collaborators?.includes(f.id))
-    ));
+    } else if (activeTab === 'friends') {
+      visibleTramas = tramas.filter(t => t.visibility === 'friends' && (
+        t.collaborators?.includes(character.id) || 
+        (character.friends && Object.keys(character.friends).some(friendId => t.collaborators?.includes(friendId)))
+      ));
   } else if (activeTab === 'private') {
     visibleTramas = tramas.filter(t => t.visibility === 'private' && t.collaborators?.includes(character.id));
   } else if (activeTab === 'collaborations') {

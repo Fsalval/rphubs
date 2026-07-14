@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { ref, onValue, push, get, remove, update } from 'firebase/database';
 import { db } from '../../../../../lib/firebase';
-import { useCharacter } from '../layout';
+import { useCharacter } from '@/app/dashboard/characters/[id]/useCharacter'
 
 interface Notification {
   id: string;

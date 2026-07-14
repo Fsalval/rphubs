@@ -9,7 +9,7 @@ import { Badge } from '../../../../../components/ui/badge';
 import { Input } from '../../../../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../../components/ui/select';
 import { Edit, Save, X, Plus, Trash2, Eye, Users, Lock } from 'lucide-react';
-import { useCharacter } from '../layout';
+import { useCharacter } from '@/app/dashboard/characters/[id]/useCharacter'
 import { db } from '../../../../../lib/firebase';
 import { ref, update } from 'firebase/database';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../../../components/ui/dropdown-menu';

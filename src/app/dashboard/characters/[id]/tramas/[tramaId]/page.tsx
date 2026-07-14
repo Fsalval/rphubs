@@ -11,7 +11,7 @@ import { Input } from '../../../../../../components/ui/input';
 import Textarea from '../../../../../../components/ui/textarea';
 import { Plus, ArrowLeft, BookOpen, Edit3, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../../../../../components/ui/dropdown-menu';
-import { useCharacter } from '../../layout';
+import { useCharacter } from '@/app/dashboard/characters/[id]/useCharacter'
 import { ref, onValue, push, update } from 'firebase/database';
 import { db } from '../../../../../../lib/firebase';
 import { Character, Story } from '../../../../../../lib/types';

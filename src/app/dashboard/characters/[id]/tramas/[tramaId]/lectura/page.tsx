@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../../../../../../lib/firebase';
-import { useCharacter } from '../../../layout';
+import { useCharacter } from '@/app/dashboard/characters/[id]/useCharacter'
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -58,7 +58,9 @@ export default function TramaLecturaPage() {
   const params = useParams();
   const router = useRouter();
   const { character } = useCharacter();
+  void character;
   const tramaId = Array.isArray(params.tramaId) ? params.tramaId[0] : params.tramaId;
+  
   
   const [trama, setTrama] = useState<Trama | null>(null);
   const [currentChapter, setCurrentChapter] = useState(0);
